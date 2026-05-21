@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { Parser } from 'json2csv';
-import { Issue, IIssue } from '../models/Issue';
+import { Issue } from '../models/Issue';
 import { IssueActivity } from '../models/IssueActivity';
 import { User } from '../models/User';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -66,8 +66,6 @@ export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res:
     const priorityMap: Record<string, number> = {};
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-
-    const todayStr = startOfToday.toISOString();
 
     issues.forEach((issue: any) => {
       statusMap[issue.status] = (statusMap[issue.status] || 0) + 1;
@@ -260,7 +258,7 @@ export const updateIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
   const updatedIssue = await Issue.findByIdAndUpdate(id, { $set: updates }, { new: true });
   const newRaw = updatedIssue.toObject ? updatedIssue.toObject() : { ...updatedIssue };
 
-  await logIssueDiff(id, String(req.user._id), oldRaw, newRaw);
+  await logIssueDiff(id as string, String(req.user._id), oldRaw, newRaw);
 
   const populated = await Issue.findById(id)
     .populate({ path: 'createdBy', select: 'name email avatar' })
@@ -288,7 +286,7 @@ export const deleteIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
   await Issue.findByIdAndUpdate(id, { $set: { deletedAt: new Date().toISOString() } });
   
   await createActivity({
-    issueId: id,
+    issueId: id as string,
     performedBy: String(req.user._id),
     action: 'CLOSED', // logging code for soft-deletion audit
     message: 'Soft deleted the issue'
@@ -351,7 +349,7 @@ export const addAttachments = asyncHandler(async (req: AuthenticatedRequest, res
   );
 
   await createActivity({
-    issueId: id,
+    issueId: id as string,
     performedBy: String(req.user._id),
     action: 'UPDATED',
     field: 'attachments',
@@ -378,7 +376,7 @@ export const deleteAttachment = asyncHandler(async (req: AuthenticatedRequest, r
     return res.status(403).json({ message: 'You do not have permission to delete attachments.' });
   }
 
-  await deleteFromCloudinary(publicId);
+  await deleteFromCloudinary(publicId as string);
 
   // Update Mongo attachments array
   const updatedIssue = await Issue.findByIdAndUpdate(
@@ -392,11 +390,11 @@ export const deleteAttachment = asyncHandler(async (req: AuthenticatedRequest, r
   );
 
   await createActivity({
-    issueId: id,
+    issueId: id as string,
     performedBy: String(req.user._id),
     action: 'UPDATED',
     field: 'attachments',
-    oldValue: publicId,
+    oldValue: publicId as string,
     message: 'Removed an attachment'
   });
 

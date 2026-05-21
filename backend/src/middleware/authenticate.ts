@@ -37,6 +37,7 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
     req.user = user;
     req.permissions = permissions;
     next();
+    return;
   } catch (err: any) {
     return res.status(401).json({ message: 'Invalid or expired access token', error: err.message });
   }

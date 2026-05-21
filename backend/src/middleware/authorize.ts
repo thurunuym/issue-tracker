@@ -9,6 +9,7 @@ export const authorize = (permission: string) => {
       });
     }
     next();
+    return;
   };
 };
 

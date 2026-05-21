@@ -1,10 +1,11 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config'; 
 import { connectDB } from './config/db';
 import Routes from './routes/routes';
 import { errorHandler } from './middleware/errorHandler';
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,7 +19,7 @@ connectDB();
 
 app.use('/api', Routes);
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'Backend is running', timestamp: new Date().toISOString() });
 });
 

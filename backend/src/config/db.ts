@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+export const isMockDB = false;
+
 export const connectDB = async () => {
   const mongoURI = process.env.MONGODB_URI;
 
