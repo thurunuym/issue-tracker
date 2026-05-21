@@ -7,7 +7,6 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { AuthenticatedRequest } from '../middleware/authenticate';
 import { uploadToCloudinary, deleteFromCloudinary } from '../services/cloudinaryService';
 import { logIssueDiff, createActivity } from '../services/activityService';
-import { isMockDB } from '../config/db';
 
 export const getIssues = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
@@ -23,14 +22,10 @@ export const getIssues = asyncHandler(async (req: AuthenticatedRequest, res: Res
   if (severity) filter.severity = severity;
 
   if (q && typeof q === 'string') {
-    if (isMockDB) {
-      filter.q = q; // Handled by Custom Mock DB Query Parser
-    } else {
-      filter.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } }
-      ];
-    }
+    filter.$or = [
+      { title: { $regex: q, $options: 'i' } },
+      { description: { $regex: q, $options: 'i' } }
+    ];
   }
 
   const total = await Issue.countDocuments(filter);
@@ -57,53 +52,27 @@ export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res:
   let total = 0;
   let resolvedToday = 0;
 
-  if (isMockDB) {
-    // Custom aggregation for file-mock database
-    const issues = (await Issue.find({ deletedAt: null })).map((item: any) => item);
-    total = issues.length;
+  // Standard MongoDB aggregations
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
 
-    const statusMap: Record<string, number> = {};
-    const priorityMap: Record<string, number> = {};
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+  total = await Issue.countDocuments({ deletedAt: null });
 
-    issues.forEach((issue: any) => {
-      statusMap[issue.status] = (statusMap[issue.status] || 0) + 1;
-      priorityMap[issue.priority] = (priorityMap[issue.priority] || 0) + 1;
+  byStatus = await Issue.aggregate([
+    { $match: { deletedAt: null } },
+    { $group: { _id: '$status', count: { $sum: 1 } } }
+  ]);
 
-      if (issue.status === 'Resolved' && issue.resolvedAt) {
-        if (new Date(issue.resolvedAt) >= startOfToday) {
-          resolvedToday++;
-        }
-      }
-    });
+  byPriority = await Issue.aggregate([
+    { $match: { deletedAt: null } },
+    { $group: { _id: '$priority', count: { $sum: 1 } } }
+  ]);
 
-    byStatus = Object.entries(statusMap).map(([key, val]) => ({ _id: key, count: val }));
-    byPriority = Object.entries(priorityMap).map(([key, val]) => ({ _id: key, count: val }));
-
-  } else {
-    // Standard MongoDB aggregations
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    total = await Issue.countDocuments({ deletedAt: null });
-
-    byStatus = await Issue.aggregate([
-      { $match: { deletedAt: null } },
-      { $group: { _id: '$status', count: { $sum: 1 } } }
-    ]);
-
-    byPriority = await Issue.aggregate([
-      { $match: { deletedAt: null } },
-      { $group: { _id: '$priority', count: { $sum: 1 } } }
-    ]);
-
-    resolvedToday = await Issue.countDocuments({
-      deletedAt: null,
-      status: 'Resolved',
-      resolvedAt: { $gte: startOfToday }
-    });
-  }
+  resolvedToday = await Issue.countDocuments({
+    deletedAt: null,
+    status: 'Resolved',
+    resolvedAt: { $gte: startOfToday }
+  });
 
   // Load recent 10 global activities for the dashboard
   const recentActivities = await IssueActivity.find({})
@@ -411,14 +380,10 @@ export const exportIssues = asyncHandler(async (req: AuthenticatedRequest, res: 
   if (severity) filter.severity = severity;
 
   if (q && typeof q === 'string') {
-    if (isMockDB) {
-      filter.q = q;
-    } else {
-      filter.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } }
-      ];
-    }
+    filter.$or = [
+      { title: { $regex: q, $options: 'i' } },
+      { description: { $regex: q, $options: 'i' } }
+    ];
   }
 
   const issues = await Issue.find(filter)
