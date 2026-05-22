@@ -20,6 +20,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
 
   const getBackgroundColorClass = () => {
     // Return a determinisic bg class based on character hash of user name
+    if (!name) return 'bg-gray-400 text-white';
     const charCodeSum = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
     const colors = [
       'bg-indigo-650 text-indigo-50',
