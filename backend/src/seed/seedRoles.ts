@@ -11,7 +11,7 @@ export const seedRoles = async () => {
     await Role.findOneAndUpdate(
       { name: roleData.name }, 
       roleData, 
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
   }
   console.log('Roles synchronized successfully.');
