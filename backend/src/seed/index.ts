@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { connectDB } from '../config/db';
 import { seedRoles } from './seedRoles';
+import { seedAdminUser } from './seedAdmin';
 
 const runSeeds = async () => {
   try {
@@ -8,10 +9,11 @@ const runSeeds = async () => {
     console.log('Connected to database');
 
     await seedRoles();
-    console.log('Seeding completed successfully');
+    await seedAdminUser();
+    console.log('Seeding admin completed successfully');
     process.exit(0);
   } catch (error) {
-    console.error('Seeding failed:', error);
+    console.error('Admin seeding failed:', error);
     process.exit(1);
   }
 };
