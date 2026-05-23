@@ -13,7 +13,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const userRole = await Role.findOne({ name: 'user' });
-  
+
   if (!userRole) {
     //  If this hits, seed script didn't run
     return res.status(500).json({ message: 'System configuration error: Default role not found.' });
@@ -36,7 +36,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000 
+    maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
   const { password: _, ...userSansPassword } = user;
@@ -79,11 +79,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'none', 
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
-  const { password: _, ...userSansPassword } = user;
+  const userObject = user.toObject();
+  const { password: _, ...userSansPassword } = userObject;
 
   return res.json({
     user: userSansPassword,
