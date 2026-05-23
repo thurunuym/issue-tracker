@@ -54,6 +54,15 @@ const authSlice = createSlice({
       state.permissions = [];
       state.isAuthenticated = false;
       state.isLoading = false;
+
+      
+
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('token'); 
+      localStorage.removeItem('user');
+
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;

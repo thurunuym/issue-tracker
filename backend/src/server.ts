@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import 'dotenv/config'; 
 import { connectDB } from './config/db';
 import Routes from './routes/routes';
@@ -20,7 +21,8 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); 
 
 connectDB();
 
