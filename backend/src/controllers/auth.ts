@@ -39,7 +39,8 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
-  const { password: _, ...userSansPassword } = user;
+  const userObject = user.toObject();
+  const { password: _, ...userSansPassword } = userObject;
 
   return res.status(201).json({
     user: userSansPassword,

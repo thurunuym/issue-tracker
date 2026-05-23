@@ -23,20 +23,26 @@ export const Login: React.FC = () => {
   const mutation = useMutation({
     mutationFn: (values: typeof form) => authApi.login(values),
     onSuccess: (data) => {
+      console.log('Login response:', JSON.stringify(data, null, 2));
+
+      // Handle potential response shape variations
+      const responseData = data.data || data;
+      const user = responseData.user;
+
       // Set the global auth store
       dispatch(
         setCredentials({
-          user: data.user,
-          accessToken: data.accessToken,
-          role: data.role,
-          permissions: data.permissions,
+          user: user,
+          accessToken: responseData.accessToken,
+          role: responseData.role,
+          permissions: responseData.permissions,
         })
       );
-      localStorage.setItem('userId', data.user._id);
-      localStorage.setItem('userEmail', data.user.email);
-      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('userId', user._id || user.id);
+      localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userRole', responseData.role);
 
-      toast.success(`Welcome back, ${data.user.name}!`);
+      toast.success(`Welcome back, ${user.name}!`);
       navigate('/');
     },
     onError: (err: any) => {
