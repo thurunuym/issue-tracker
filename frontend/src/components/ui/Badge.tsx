@@ -7,6 +7,62 @@ export interface BadgeProps {
   className?: string;
 }
 
+const PriorityIcon: React.FC<{ level: string }> = ({ level }) => {
+  switch (level) {
+    case 'low':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 3v6M3 7l3 3 3-3" />
+        </svg>
+      );
+    case 'medium':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h6" />
+        </svg>
+      );
+    case 'high':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 9V3M3 5l3-3 3 3" />
+        </svg>
+      );
+    case 'critical':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2v5M6 9.5v.01" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
+const SeverityIcon: React.FC<{ level: string }> = ({ level }) => {
+  switch (level) {
+    case 'minor':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="currentColor">
+          <circle cx="6" cy="6" r="3" />
+        </svg>
+      );
+    case 'major':
+      return (
+        <svg className="h-3 w-3 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M6 2v5M6 9.5v.01" />
+        </svg>
+      );
+    case 'critical':
+      return (
+        <svg className="h-3.5 w-3.5 mr-1 flex-shrink-0" viewBox="0 0 12 12" fill="currentColor">
+          <path d="M5.13 1.86L.82 9.14c-.37.64.1 1.44.87 1.44h8.62c.77 0 1.24-.8.87-1.44L6.87 1.86c-.38-.65-1.36-.65-1.74 0zM6 4.5v2.5M6 9h.01" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
 export const Badge: React.FC<BadgeProps> = ({ type, value, className }) => {
   const getStyles = () => {
     const val = value.toLowerCase().trim();
@@ -58,6 +114,8 @@ export const Badge: React.FC<BadgeProps> = ({ type, value, className }) => {
     return 'bg-blue-50 text-blue-700 border-blue-150 dark:bg-blue-950/20 dark:text-blue-200 dark:border-blue-900/30';
   };
 
+  const val = value.toLowerCase().trim();
+
   return (
     <span
       className={cn(
@@ -66,6 +124,8 @@ export const Badge: React.FC<BadgeProps> = ({ type, value, className }) => {
         className
       )}
     >
+      {type === 'priority' && <PriorityIcon level={val} />}
+      {type === 'severity' && <SeverityIcon level={val} />}
       {value}
     </span>
   );

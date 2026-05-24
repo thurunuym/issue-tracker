@@ -1,9 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Ticket, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/store';
+import { logout } from '../../features/auth/authSlice';
 import { toggleSidebar } from '../../features/ui/uiSlice';
+import authApi from '../../services/authApi';
 import cn from '../../utils/cn';
+import toast from 'react-hot-toast';
 
 export const Sidebar: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -24,6 +27,17 @@ export const Sidebar: React.FC = () => {
       icon: <Users className="h-4.5 w-4.5" />,
     });
   }
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      dispatch(logout());
+      toast.success('Successfully logged out.');
+    } catch (err: any) {
+      console.error(err);
+      dispatch(logout());
+    }
+  };
 
   return (
     <aside
@@ -54,13 +68,29 @@ export const Sidebar: React.FC = () => {
         </nav>
       </div>
 
-      <div className="flex justify-end p-2 border-t border-gray-150 dark:border-gray-800">
+      {/* Logout + Collapse */}
+      <div className="border-t border-gray-150 dark:border-gray-800 px-2 py-2 space-y-1">
         <button
-          onClick={() => dispatch(toggleSidebar())}
-          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-850 text-gray-500 hover:text-gray-900 cursor-pointer"
+          onClick={handleLogout}
+          className={cn(
+            'flex items-center w-full rounded-lg px-3 py-2.5 text-sm font-medium transition-all cursor-pointer group',
+            'text-gray-600 hover:bg-red-50 hover:text-red-700 dark:text-gray-400 dark:hover:bg-red-950/20 dark:hover:text-red-400',
+            !sidebarOpen && 'justify-center'
+          )}
+          title="Logout"
         >
-          {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <LogOut className="h-4.5 w-4.5 flex-shrink-0" />
+          {sidebarOpen && <span className="ml-2.5 truncate">Logout</span>}
         </button>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => dispatch(toggleSidebar())}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-850 text-gray-500 hover:text-gray-900 cursor-pointer"
+          >
+            {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
     </aside>
   );

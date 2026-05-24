@@ -200,12 +200,26 @@ export const IssueList: React.FC = () => {
         </div>
       ) : issues.length === 0 ? (
         <EmptyState
-          title="No matching issues found"
-          description="We couldn't find any issues matching your search filters. Try adjusting your status or search text."
+          title={
+            filters.q
+              ? `No results for "${filters.q}"`
+              : (filters.status || filters.priority || filters.severity)
+                ? 'No issues match your current filters'
+                : 'No critical issues — things look good 🎉'
+          }
+          description={
+            filters.q
+              ? 'Try a broader search term or adjust your filters.'
+              : (filters.status || filters.priority || filters.severity)
+                ? 'Try changing the status, priority, or severity filters.'
+                : 'There are no issues in the system yet. Create one to get started!'
+          }
           action={
-            <Button variant="secondary" size="sm" onClick={() => dispatch(resetFilters())}>
-              Reset Filters
-            </Button>
+            (filters.q || filters.status || filters.priority || filters.severity) ? (
+              <Button variant="secondary" size="sm" onClick={() => dispatch(resetFilters())}>
+                Reset Filters
+              </Button>
+            ) : undefined
           }
         />
       ) : (

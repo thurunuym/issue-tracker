@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { ClipboardList, Mail, Lock } from 'lucide-react';
+import { z } from 'zod';
 import { useAppDispatch } from '../app/store';
 import { setCredentials } from '../features/auth/authSlice';
 import authApi from '../services/authApi';
@@ -9,30 +10,27 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import toast from 'react-hot-toast';
 
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-  });
-
+  const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
     mutationFn: (values: typeof form) => authApi.login(values),
     onSuccess: (data) => {
-      console.log('Login response:', JSON.stringify(data, null, 2));
-
-      // Handle potential response shape variations
       const responseData = data.data || data;
       const user = responseData.user;
 
-      // Set the global auth store
       dispatch(
         setCredentials({
-          user: user,
+          user,
           accessToken: responseData.accessToken,
           role: responseData.role,
           permissions: responseData.permissions,
@@ -66,15 +64,12 @@ export const Login: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const fieldErrors: Record<string, string> = {};
-    if (!form.email || !form.email.includes('@')) {
-      fieldErrors.email = 'Please enter a valid email address';
-    }
-    if (!form.password || form.password.length < 6) {
-      fieldErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (Object.keys(fieldErrors).length > 0) {
+    const result = loginSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
       setErrors(fieldErrors);
       return;
     }

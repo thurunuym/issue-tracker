@@ -2,20 +2,22 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { ClipboardList, User, Mail, Lock } from 'lucide-react';
+import { z } from 'zod';
 import authApi from '../services/authApi';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import toast from 'react-hot-toast';
 
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 export const Register: React.FC = () => {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-  });
-
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
@@ -45,19 +47,12 @@ export const Register: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Verify fields presence
-    const fieldErrors: Record<string, string> = {};
-    if (!form.name || form.name.trim().length === 0) {
-      fieldErrors.name = 'Please enter your full name';
-    }
-    if (!form.email || !form.email.includes('@')) {
-      fieldErrors.email = 'Please enter a valid email address';
-    }
-    if (!form.password || form.password.length < 6) {
-      fieldErrors.password = 'Password must be at least 6 characters long';
-    }
-
-    if (Object.keys(fieldErrors).length > 0) {
+    const result = registerSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
       setErrors(fieldErrors);
       return;
     }

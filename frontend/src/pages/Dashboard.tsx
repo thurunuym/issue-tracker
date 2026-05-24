@@ -1,13 +1,16 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, CheckCircle2, AlertCircle, Layers, Activity } from 'lucide-react';
+import { BarChart3, CheckCircle2, AlertCircle, Layers, Activity, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAppSelector } from '../app/store';
 import issuesApi from '../services/issuesApi';
 import StatCard from '../components/dashboard/StatCard';
 import StatusPieChart from '../components/dashboard/StatusPieChart';
-import PriorityBarChart from '../components/dashboard/PriorityBarChart';
+import SeverityBarChart from '../components/dashboard/SeverityBarChart';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
+import Badge from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
+import formatDate from '../utils/formatDate';
 
 // Helper to extract a count from the aggregation array by _id key
 const getCount = (arr: { _id: string; count: number }[], key: string): number => {
@@ -17,6 +20,7 @@ const getCount = (arr: { _id: string; count: number }[], key: string): number =>
 
 export const Dashboard: React.FC = () => {
   const { user, role } = useAppSelector((state) => state.auth);
+  const isAdmin = role === 'admin';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['issueStats'],
@@ -29,7 +33,9 @@ export const Dashboard: React.FC = () => {
   const resolvedToday = data?.resolvedToday ?? 0;
   const byStatus: { _id: string; count: number }[] = data?.byStatus ?? [];
   const byPriority: { _id: string; count: number }[] = data?.byPriority ?? [];
+  const bySeverity: { _id: string; count: number }[] = data?.bySeverity ?? [];
   const recentActivities = data?.recentActivities ?? [];
+  const myActiveTasks = data?.myActiveTasks ?? [];
 
   const openCount = getCount(byStatus, 'Open');
   const inProgressCount = getCount(byStatus, 'In Progress');
@@ -40,9 +46,9 @@ export const Dashboard: React.FC = () => {
     value: getCount(byStatus, status),
   }));
 
-  const priorityChartData = ['Low', 'Medium', 'High', 'Critical'].map((priority) => ({
-    name: priority,
-    value: getCount(byPriority, priority),
+  const severityChartData = ['Minor', 'Major', 'Critical'].map((sev) => ({
+    name: sev,
+    value: getCount(bySeverity, sev),
   }));
 
   return (
@@ -109,7 +115,7 @@ export const Dashboard: React.FC = () => {
             />
           </div>
 
-          {/* Charts Row */}
+          {/* Charts Row — Status Pie (left) + Severity Horizontal Bar (right) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-gray-901 border border-gray-150 dark:border-gray-800 rounded-xl p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
@@ -120,19 +126,60 @@ export const Dashboard: React.FC = () => {
 
             <div className="bg-white dark:bg-gray-901 border border-gray-150 dark:border-gray-800 rounded-xl p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
-                Issues by Priority
+                Issues by Severity
               </h2>
-              <PriorityBarChart data={priorityChartData} />
+              <SeverityBarChart data={severityChartData} />
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* My Active Tasks — only for non-admin users */}
+          {!isAdmin && myActiveTasks.length > 0 && (
+            <div className="bg-white dark:bg-gray-901 border border-gray-150 dark:border-gray-800 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-indigo-600" />
+                  My Active Tasks
+                </h2>
+                <Link
+                  to="/issues"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                >
+                  View all <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+
+              <div className="space-y-2.5">
+                {myActiveTasks.map((task: any) => (
+                  <Link
+                    key={task._id}
+                    to={`/issues/${task._id}`}
+                    className="flex items-center justify-between p-3.5 border border-gray-150 dark:border-gray-800 rounded-lg bg-gray-50/50 dark:bg-gray-900 hover:border-blue-200 dark:hover:border-blue-800/50 transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Updated {formatDate(task.updatedAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <Badge type="status" value={task.status} />
+                      <Badge type="priority" value={task.priority} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Activity — limited to 10 */}
           <div className="bg-white dark:bg-gray-901 border border-gray-150 dark:border-gray-800 rounded-xl p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-600" />
               Recent Activity
             </h2>
-            <ActivityFeed activities={recentActivities} />
+            <ActivityFeed activities={recentActivities.slice(0, 10)} />
           </div>
         </>
       )}

@@ -51,6 +51,7 @@ export const getIssues = asyncHandler(async (req: AuthenticatedRequest, res: Res
 export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   let byStatus: any[] = [];
   let byPriority: any[] = [];
+  let bySeverity: any[] = [];
   let total = 0;
   let resolvedToday = 0;
 
@@ -70,6 +71,11 @@ export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res:
     { $group: { _id: '$priority', count: { $sum: 1 } } }
   ]);
 
+  bySeverity = await Issue.aggregate([
+    { $match: { deletedAt: null } },
+    { $group: { _id: '$severity', count: { $sum: 1 } } }
+  ]);
+
   resolvedToday = await Issue.countDocuments({
     deletedAt: null,
     status: 'Resolved',
@@ -82,12 +88,29 @@ export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res:
     .sort({ createdAt: -1 })
     .limit(10);
 
+  // My active tasks: issues assigned to the current user that are Open or In Progress
+  const userId = req.user?.userId;
+  let myActiveTasks: any[] = [];
+  if (userId) {
+    myActiveTasks = await Issue.find({
+      deletedAt: null,
+      assignedTo: userId,
+      status: { $in: ['Open', 'In Progress'] }
+    })
+      .populate({ path: 'createdBy', select: 'name email avatar' })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .lean();
+  }
+
   return res.json({
     byStatus,
     byPriority,
+    bySeverity,
     total,
     resolvedToday,
-    recentActivities
+    recentActivities,
+    myActiveTasks
   });
 });
 

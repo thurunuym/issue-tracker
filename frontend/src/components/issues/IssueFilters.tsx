@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/store';
 import { setFilters } from '../../features/issues/issueSlice';
 import useDebounce from '../../hooks/useDebounce';
@@ -13,6 +13,9 @@ export const IssueFilters: React.FC = () => {
   // Maintain local search state for fluid, non-blocking typing
   const [searchValue, setSearchValue] = useState(filters.q);
   const debouncedSearch = useDebounce(searchValue, 300);
+
+  // Is the debounce still pending?
+  const isSearchPending = searchValue !== debouncedSearch;
 
   // Sync debounced search to Redux
   useEffect(() => {
@@ -78,7 +81,11 @@ export const IssueFilters: React.FC = () => {
           className="pl-9.5"
         />
         <div className="absolute left-3.5 top-3 text-gray-400 dark:text-gray-500 pointer-events-none">
-          <Search className="h-4.5 w-4.5" />
+          {isSearchPending ? (
+            <Loader2 className="h-4.5 w-4.5 animate-spin text-blue-500" />
+          ) : (
+            <Search className="h-4.5 w-4.5" />
+          )}
         </div>
       </div>
 

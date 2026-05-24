@@ -306,7 +306,7 @@ export const IssueDetail: React.FC = () => {
                 No active audit entries logged.
               </p>
             ) : (
-              <div className="flow-root mt-4.5 border-t border-gray-150 pt-5 dark:border-gray-800">
+              <div className="flow-root mt-4.5 border-t border-gray-150 pt-5 dark:border-gray-800 max-h-[500px] overflow-y-auto">
                 <ul role="list" className="-mb-8">
                   {commentsFeed.map((activity: any, idx: number) => {
                     const author = activity.performedBy || { name: 'System User' };
