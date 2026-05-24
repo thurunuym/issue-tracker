@@ -98,8 +98,6 @@ export const IssueList: React.FC = () => {
   const issues = data?.issues || [];
   const totalPages = data?.totalPages || 1;
 
-  // Visibility rules for non-admin users
-  const showExports = isAdmin || activeTab === 'all';
   const hideTableActions = !isAdmin && (activeTab === 'all' || activeTab === 'assigned');
   const hideTableEdit = !isAdmin && activeTab === 'assigned';
 
@@ -124,7 +122,7 @@ export const IssueList: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {showExports && (
+          
             <>
               <Button
                 variant="outline"
@@ -148,7 +146,7 @@ export const IssueList: React.FC = () => {
                 Export JSON
               </Button>
             </>
-          )}
+         
 
           {canCreate && (
             <Button
