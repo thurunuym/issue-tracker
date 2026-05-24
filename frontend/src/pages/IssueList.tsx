@@ -100,7 +100,7 @@ export const IssueList: React.FC = () => {
 
   // Visibility rules for non-admin users
   const showExports = isAdmin || activeTab === 'all';
-  const hideTableActions = !isAdmin && activeTab === 'all';
+  const hideTableActions = !isAdmin && (activeTab === 'all' || activeTab === 'assigned');
   const hideTableEdit = !isAdmin && activeTab === 'assigned';
 
   // Tab definitions

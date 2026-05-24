@@ -155,7 +155,7 @@ export const IssueForm: React.FC<IssueFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-5.5 text-left bg-white dark:bg-gray-901 p-6 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm max-w-2xl mx-auto">
       <Input
-        label="Issue Title"
+        label="Issue Title*"
         name="title"
         id="title"
         placeholder="Enter a descriptive title..."
@@ -166,7 +166,7 @@ export const IssueForm: React.FC<IssueFormProps> = ({
       />
 
       <Textarea
-        label="Detailed Description"
+        label="Detailed Description*"
         name="description"
         id="description"
         placeholder="Describe the issue, steps to reproduce, or notes..."

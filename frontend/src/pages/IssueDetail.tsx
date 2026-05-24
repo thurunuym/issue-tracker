@@ -36,7 +36,6 @@ export const IssueDetail: React.FC = () => {
   const canEditOwn = usePermission('issue:update:own');
   const canViewActivities = usePermission('issueActivity:view');
 
-  // Interactive actions modals
   const [resolveOpen, setResolveOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
 
@@ -111,11 +110,12 @@ export const IssueDetail: React.FC = () => {
   // Determine fine-grained user edit permission
   const creatorId = typeof issue.createdBy === 'object' ? issue.createdBy?._id : issue.createdBy;
   const isCreatorClient = String(creatorId) === String(currentUserId);
-  const canModifyTicket = canEditAny || (canEditOwn && isCreatorClient);
+  const assigneeId = typeof issue.assignedTo === 'object' ? issue.assignedTo?._id : issue.assignedTo;
+  const isAssignee = !!assigneeId && String(assigneeId) === String(currentUserId);
+  const canModifyTicket = canEditAny || (canEditOwn && isCreatorClient) || isAssignee;
 
   // For non-admin users: hide "Edit Details" when the issue is assigned to them but not created by them
-  const assigneeId = typeof issue.assignedTo === 'object' ? issue.assignedTo?._id : issue.assignedTo;
-  const isAssigneeOnly = !isCreatorClient && String(assigneeId) === String(currentUserId);
+  const isAssigneeOnly = !isCreatorClient && isAssignee;
   const showEditButton = isAdmin || !isAssigneeOnly;
 
   // Workflow transitions trigger handlers
