@@ -2,7 +2,7 @@ import axios from 'axios';
 import { store } from '../app/store';
 import { updateAccessToken, logout } from '../features/auth/authSlice';
 
-const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+const apiBase = import.meta.env.VITE_API_URL || '/api';
 
 export const axiosInstance = axios.create({
   baseURL: apiBase,
