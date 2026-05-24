@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173', 
-  'https://issue-tracker-gamma-lime.vercel.app' // NO trailing slash at the end!
+  'https://issue-tracker-gamma-lime.vercel.app'
 ];
 
 app.use(cors({
