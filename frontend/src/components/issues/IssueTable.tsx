@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import type { Issue } from '../../types';
 import Badge from '../ui/Badge';
 import Avatar from '../ui/Avatar';
@@ -9,9 +9,13 @@ import formatDate from '../../utils/formatDate';
 interface IssueTableProps {
   issues: Issue[];
   onDeleteRequest: (id: string) => void;
+  /** Hide the entire Actions column (used for "All" tab when non-admin) */
+  hideActions?: boolean;
+  /** Hide only the Edit button inside Actions (used for "Assigned to Me" tab) */
+  hideEdit?: boolean;
 }
 
-export const IssueTable: React.FC<IssueTableProps> = ({ issues, onDeleteRequest }) => {
+export const IssueTable: React.FC<IssueTableProps> = ({ issues, onDeleteRequest, hideActions = false, hideEdit = false }) => {
   const navigate = useNavigate();
 
   return (
@@ -27,7 +31,7 @@ export const IssueTable: React.FC<IssueTableProps> = ({ issues, onDeleteRequest 
               <th className="px-5 py-4">Assigned To</th>
               <th className="px-5 py-4">Due Date</th>
               <th className="px-5 py-4">Created</th>
-              <th className="px-5 py-4 text-right">Actions</th>
+              {!hideActions && <th className="px-5 py-4 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-150 dark:divide-gray-800 text-sm">
@@ -77,33 +81,29 @@ export const IssueTable: React.FC<IssueTableProps> = ({ issues, onDeleteRequest 
                   <td className="px-5 py-4 whitespace-nowrap">
                     <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(issue.createdAt).split(',')[0]}</span>
                   </td>
-                  <td className="px-5 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="inline-flex items-center space-x-2">
-                      <button
-                        onClick={() => navigate(`/issues/${issue._id}`)}
-                        className="p-1.5 rounded-md hover:bg-gray-100 text-gray-505 hover:text-gray-900 dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer"
-                        title="View Details"
-                      >
-                        <Eye className="h-4.2 w-4.2" />
-                      </button>
+                  {!hideActions && (
+                    <td className="px-5 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex items-center space-x-2">
+                        {!hideEdit && (
+                          <button
+                            onClick={() => navigate(`/issues/${issue._id}/edit`)}
+                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-505 hover:text-blue-600 dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer"
+                            title="Edit Issue"
+                          >
+                            <Edit className="h-4.2 w-4.2" />
+                          </button>
+                        )}
 
-                      <button
-                        onClick={() => navigate(`/issues/${issue._id}/edit`)}
-                        className="p-1.5 rounded-md hover:bg-gray-100 text-gray-505 hover:text-blue-600 dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer"
-                        title="Edit Issue"
-                      >
-                        <Edit className="h-4.2 w-4.2" />
-                      </button>
-
-                      <button
-                        onClick={() => onDeleteRequest(issue._id)}
-                        className="p-1.5 rounded-md hover:bg-red-50 text-gray-505 hover:text-red-650 dark:hover:bg-red-950/20 dark:text-gray-400 dark:hover:text-red-400 cursor-pointer"
-                        title="Delete Issue"
-                      >
-                        <Trash2 className="h-4.2 w-4.2" />
-                      </button>
-                    </div>
-                  </td>
+                        <button
+                          onClick={() => onDeleteRequest(issue._id)}
+                          className="p-1.5 rounded-md hover:bg-red-50 text-gray-505 hover:text-red-650 dark:hover:bg-red-950/20 dark:text-gray-400 dark:hover:text-red-400 cursor-pointer"
+                          title="Delete Issue"
+                        >
+                          <Trash2 className="h-4.2 w-4.2" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}

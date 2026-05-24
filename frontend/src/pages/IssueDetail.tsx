@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Tags,
   FileText,
   Trash2,
   Download,
@@ -14,6 +13,7 @@ import {
   XCircle,
   RotateCcw
 } from 'lucide-react';
+import { useAppSelector } from '../app/store';
 import usePermission from '../hooks/usePermission';
 import issuesApi from '../services/issuesApi';
 import Avatar from '../components/ui/Avatar';
@@ -66,7 +66,9 @@ export const IssueDetail: React.FC = () => {
     mutationFn: (payload: any) => issuesApi.updateIssue(id!, payload),
     onSuccess: (updatedData) => {
       toast.success('Ticket updated successfully!');
-      queryClient.setQueryData(queryKeyArr, updatedData);
+      // Backend returns { issue: ... } — unwrap before caching
+      const issueObj = updatedData.issue || updatedData;
+      queryClient.setQueryData(queryKeyArr, issueObj);
       queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
       queryClient.invalidateQueries({ queryKey: ['issueStats'] });
     },
@@ -124,9 +126,16 @@ export const IssueDetail: React.FC = () => {
   }
 
   // Determine fine-grained user edit permission
+  const { role } = useAppSelector((state) => state.auth);
+  const isAdmin = role === 'admin';
   const creatorId = typeof issue.createdBy === 'object' ? issue.createdBy?._id : issue.createdBy;
   const isCreatorClient = String(creatorId) === String(currentUserId);
   const canModifyTicket = canEditAny || (canEditOwn && isCreatorClient);
+
+  // For non-admin users: hide "Edit Details" when the issue is assigned to them but not created by them
+  const assigneeId = typeof issue.assignedTo === 'object' ? issue.assignedTo?._id : issue.assignedTo;
+  const isAssigneeOnly = !isCreatorClient && String(assigneeId) === String(currentUserId);
+  const showEditButton = isAdmin || !isAssigneeOnly;
 
   // Workflow transitions trigger handlers
   const handleStartProgress = () => {
@@ -167,7 +176,6 @@ export const IssueDetail: React.FC = () => {
   };
 
   const attachments = issue.attachments || [];
-  const tagsList = issue.tags || [];
   const commentsFeed = activityData?.activities || [];
 
   return (
@@ -224,10 +232,12 @@ export const IssueDetail: React.FC = () => {
               </Button>
             )}
 
-            <Button variant="outline" size="sm" onClick={() => navigate(`/issues/${issue._id}/edit`)}>
-              <Edit className="h-4 w-4 mr-1.5" />
-              Edit Details
-            </Button>
+            {showEditButton && (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/issues/${issue._id}/edit`)}>
+                <Edit className="h-4 w-4 mr-1.5" />
+                Edit Details
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -440,27 +450,7 @@ export const IssueDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Tags sidebar card */}
-          <div className="bg-white p-5 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-455 dark:text-gray-500 uppercase mb-3 flex items-center">
-              <Tags className="h-4.5 w-4.5 mr-1.5 text-gray-400" />
-              Indexed Tags List
-            </h2>
-            {tagsList.length === 0 ? (
-              <span className="text-xs text-gray-400 dark:text-gray-550 italic block">No tags configured for this issue.</span>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {tagsList.map((tag: string, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-750 dark:bg-gray-800 dark:text-gray-300 text-xs font-medium border border-gray-200 dark:border-gray-750"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+
         </div>
       </div>
 

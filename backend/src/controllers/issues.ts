@@ -13,13 +13,15 @@ export const getIssues = asyncHandler(async (req: AuthenticatedRequest, res: Res
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
 
-  const { status, priority, severity, q } = req.query;
+  const { status, priority, severity, q, createdBy, assignedTo } = req.query;
 
   const filter: any = { deletedAt: null };
 
   if (status) filter.status = status;
   if (priority) filter.priority = priority;
   if (severity) filter.severity = severity;
+  if (createdBy) filter.createdBy = createdBy;
+  if (assignedTo) filter.assignedTo = assignedTo;
 
   if (q && typeof q === 'string') {
     filter.$or = [

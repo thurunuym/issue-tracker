@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { useAppSelector } from '../../app/store';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -15,7 +16,6 @@ const issueFormSchema = z.object({
   priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
   severity: z.enum(['Minor', 'Major', 'Critical']),
   assignedTo: z.string().optional(),
-  tags: z.string().optional(),
   dueDate: z.string().optional(),
 });
 
@@ -25,7 +25,6 @@ type IssueFormValues = {
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   severity: 'Minor' | 'Major' | 'Critical';
   assignedTo: string;
-  tags: string;
   dueDate: string;
 };
 
@@ -36,7 +35,6 @@ interface IssueFormProps {
     priority: 'Low' | 'Medium' | 'High' | 'Critical';
     severity: 'Minor' | 'Major' | 'Critical';
     assignedTo?: string;
-    tags?: string[];
     dueDate?: string;
   };
   onSubmit: (values: any) => void;
@@ -50,13 +48,15 @@ export const IssueForm: React.FC<IssueFormProps> = ({
   isLoading = false,
   submitButtonText = 'Submit',
 }) => {
+  const { role } = useAppSelector((state) => state.auth);
+  const isAdmin = role === 'admin';
+
   const [form, setForm] = useState<IssueFormValues>({
     title: initialValues?.title || '',
     description: initialValues?.description || '',
     priority: initialValues?.priority || 'Medium',
     severity: initialValues?.severity || 'Minor',
     assignedTo: initialValues?.assignedTo || '',
-    tags: initialValues?.tags?.join(', ') || '',
     dueDate: initialValues?.dueDate ? new Date(initialValues.dueDate).toISOString().split('T')[0] : '',
   });
 
@@ -71,16 +71,17 @@ export const IssueForm: React.FC<IssueFormProps> = ({
         priority: initialValues.priority || 'Medium',
         severity: initialValues.severity || 'Minor',
         assignedTo: initialValues.assignedTo || '',
-        tags: initialValues.tags?.join(', ') || '',
         dueDate: initialValues.dueDate ? new Date(initialValues.dueDate).toISOString().split('T')[0] : '',
       });
     }
   }, [initialValues]);
 
   // Fetch users for the assignment drop-down using TanStack Query
+  // Only fetch user list for admin role (the endpoint is admin-only)
   const { data: usersData } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getUsers(),
+    enabled: isAdmin,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -103,8 +104,20 @@ export const IssueForm: React.FC<IssueFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prepare form data with trimmed strings
+    const formDataToValidate = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      priority: form.priority,
+      severity: form.severity,
+      assignedTo: form.assignedTo,
+      dueDate: form.dueDate,
+    };
+
+    console.log('Submitting form data:', formDataToValidate); // Debug log
+
     // Trigger frontend verification via Zod
-    const result = issueFormSchema.safeParse(form);
+    const result = issueFormSchema.safeParse(formDataToValidate);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((err: z.ZodIssue) => {
@@ -113,11 +126,12 @@ export const IssueForm: React.FC<IssueFormProps> = ({
         }
       });
       setErrors(fieldErrors);
+      console.error('Validation errors:', fieldErrors); // Debug log
       toast.error('Please correct the validation errors first.');
       return;
     }
 
-    onSubmit(form);
+    onSubmit(formDataToValidate);
   };
 
   const userOptions = [
@@ -162,6 +176,17 @@ export const IssueForm: React.FC<IssueFormProps> = ({
         disabled={isLoading}
         rows={5}
       />
+      <div className="flex justify-between items-center">
+        <p className={`text-xs font-medium ${
+          form.description.length < 10 
+            ? 'text-red-500 dark:text-red-450' 
+            : 'text-gray-500 dark:text-gray-400'
+        }`}>
+          {form.description.length < 10 
+            ? `${10 - form.description.length} more character${10 - form.description.length !== 1 ? 's' : ''} needed` 
+            : `${form.description.length} character${form.description.length !== 1 ? 's' : ''}`}
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
         <Select
@@ -188,16 +213,18 @@ export const IssueForm: React.FC<IssueFormProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-        <Select
-          label="Assignee User"
-          name="assignedTo"
-          id="assignedTo"
-          options={userOptions}
-          value={form.assignedTo}
-          onChange={handleChange}
-          error={errors.assignedTo}
-          disabled={isLoading}
-        />
+        {isAdmin && (
+          <Select
+            label="Assignee User"
+            name="assignedTo"
+            id="assignedTo"
+            options={userOptions}
+            value={form.assignedTo}
+            onChange={handleChange}
+            error={errors.assignedTo}
+            disabled={isLoading}
+          />
+        )}
 
         <Input
           label="Target Due Date"
@@ -210,17 +237,6 @@ export const IssueForm: React.FC<IssueFormProps> = ({
           disabled={isLoading}
         />
       </div>
-
-      <Input
-        label="Tags (Comma separated)"
-        name="tags"
-        id="tags"
-        placeholder="e.g. bug, production, ui, auth"
-        value={form.tags}
-        onChange={handleChange}
-        error={errors.tags}
-        disabled={isLoading}
-      />
 
       <div className="flex items-center justify-end space-x-3 pt-3.5 border-t border-gray-150 dark:border-gray-800">
         <Button variant="primary" type="submit" isLoading={isLoading}>

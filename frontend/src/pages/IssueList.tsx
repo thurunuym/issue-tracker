@@ -16,10 +16,20 @@ import Spinner from '../components/ui/Spinner';
 import EmptyState from '../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 
+type IssueTab = 'all' | 'my' | 'assigned';
+
 export const IssueList: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+
+  // Auth state
+  const { role, user } = useAppSelector((state) => state.auth);
+  const isAdmin = role === 'admin';
+  const currentUserId = user?._id || '';
+
+  // Tab state (only relevant for non-admin users)
+  const [activeTab, setActiveTab] = useState<IssueTab>('all');
 
   // Retrieve current filters and pager offsets out of Redux
   const filters = useAppSelector((state) => state.issues.filters);
@@ -31,10 +41,25 @@ export const IssueList: React.FC = () => {
   // Modal deletion confirmation states
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Build query params: merge Redux filters with tab-specific server-side filters
+  const queryParams = React.useMemo(() => {
+    const params: any = { ...filters };
+
+    if (!isAdmin) {
+      if (activeTab === 'my') {
+        params.createdBy = currentUserId;
+      } else if (activeTab === 'assigned') {
+        params.assignedTo = currentUserId;
+      }
+    }
+
+    return params;
+  }, [filters, isAdmin, activeTab, currentUserId]);
+
   // Hook up issues list fetcher via TanStack Query
   const { data, isLoading, error } = useQuery({
-    queryKey: ['issues', filters],
-    queryFn: () => issuesApi.getIssues(filters),
+    queryKey: ['issues', queryParams],
+    queryFn: () => issuesApi.getIssues(queryParams),
     placeholderData: (previousData) => previousData, // smooth user experience when switching pages
   });
 
@@ -64,8 +89,26 @@ export const IssueList: React.FC = () => {
     }
   };
 
+  // Reset page to 1 when switching tabs
+  const handleTabChange = (tab: IssueTab) => {
+    setActiveTab(tab);
+    dispatch(setPageOnly(1));
+  };
+
   const issues = data?.issues || [];
-  const totalPages = data?.pages || 1;
+  const totalPages = data?.totalPages || 1;
+
+  // Visibility rules for non-admin users
+  const showExports = isAdmin || activeTab === 'all';
+  const hideTableActions = !isAdmin && activeTab === 'all';
+  const hideTableEdit = !isAdmin && activeTab === 'assigned';
+
+  // Tab definitions
+  const tabs: { key: IssueTab; label: string }[] = [
+    { key: 'all', label: 'All Issues' },
+    { key: 'my', label: 'My Issues' },
+    { key: 'assigned', label: 'Assigned to Me' },
+  ];
 
   return (
     <div className="space-y-6 text-left p-1">
@@ -81,27 +124,31 @@ export const IssueList: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => exportData('csv')}
-            disabled={exportStatus === 'loading'}
-            className="text-xs shrink-0"
-          >
-            <Download className="h-4 w-4 mr-1.5" />
-            Export CSV
-          </Button>
+          {showExports && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportData('csv')}
+                disabled={exportStatus === 'loading'}
+                className="text-xs shrink-0"
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                Export CSV
+              </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => exportData('json')}
-            disabled={exportStatus === 'loading'}
-            className="text-xs shrink-0"
-          >
-            <FileJson className="h-4 w-4 mr-1.5" />
-            Export JSON
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportData('json')}
+                disabled={exportStatus === 'loading'}
+                className="text-xs shrink-0"
+              >
+                <FileJson className="h-4 w-4 mr-1.5" />
+                Export JSON
+              </Button>
+            </>
+          )}
 
           {canCreate && (
             <Button
@@ -116,6 +163,25 @@ export const IssueList: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Tab Bar (non-admin only) */}
+      {!isAdmin && (
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg w-fit">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`px-4 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                activeTab === tab.key
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter controls panel */}
       <IssueFilters />
@@ -146,7 +212,12 @@ export const IssueList: React.FC = () => {
         />
       ) : (
         <div className="space-y-4">
-          <IssueTable issues={issues} onDeleteRequest={(id) => setDeleteId(id)} />
+          <IssueTable
+            issues={issues}
+            onDeleteRequest={(id) => setDeleteId(id)}
+            hideActions={hideTableActions}
+            hideEdit={hideTableEdit}
+          />
           <Pagination
             currentPage={filters.page}
             totalPages={totalPages}
