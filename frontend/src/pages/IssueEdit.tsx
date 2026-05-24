@@ -1,10 +1,12 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Edit2 } from 'lucide-react';
+import { ArrowLeft, Edit2, FileText, Trash2, Download } from 'lucide-react';
 import issuesApi from '../services/issuesApi';
 import IssueForm from '../components/issues/IssueForm';
+import FileUpload from '../components/ui/FileUpload';
 import Spinner from '../components/ui/Spinner';
+import formatDate from '../utils/formatDate';
 import toast from 'react-hot-toast';
 
 export const IssueEdit: React.FC = () => {
@@ -37,6 +39,32 @@ export const IssueEdit: React.FC = () => {
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Access Denied: You do not have permissions to edit this ticket.');
     },
+  });
+
+  // Mutator for file uploads
+  const uploadMutation = useMutation({
+    mutationFn: (files: File[]) => issuesApi.addAttachments(id!, files),
+    onSuccess: () => {
+      toast.success('File(s) uploaded successfully!');
+      queryClient.invalidateQueries({ queryKey: ['issue', id] });
+      queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'File upload failed.');
+    }
+  });
+
+  // Mutator for attachment deletion
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: (publicId: string) => issuesApi.deleteAttachment(id!, publicId),
+    onSuccess: () => {
+      toast.success('Attachment removed from ticket.');
+      queryClient.invalidateQueries({ queryKey: ['issue', id] });
+      queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to delete attachment.');
+    }
   });
 
   const handleEditSubmit = (formValues: any) => {
@@ -86,6 +114,8 @@ export const IssueEdit: React.FC = () => {
     dueDate: issue.dueDate || '',
   };
 
+  const attachments = issue.attachments || [];
+
   return (
     <div className="space-y-6 text-left p-1">
       {/* Detail header */}
@@ -105,13 +135,74 @@ export const IssueEdit: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
         <IssueForm
           initialValues={formPreset}
           onSubmit={handleEditSubmit}
           isLoading={editMutation.isPending}
           submitButtonText="Save Ticket Changes"
         />
+
+        {/* File Attachments Section */}
+        <div className="bg-white p-6 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left max-w-2xl mx-auto">
+          <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-4 leading-4">
+            File Attachments
+          </h2>
+
+          {/* Existing attachments preview */}
+          {attachments.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              {attachments.map((file: any, idx: number) => (
+                <div
+                  key={file.publicId || idx}
+                  className="flex items-center justify-between p-3.5 border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-805 dark:bg-gray-900 shadow-xs text-left"
+                >
+                  <div className="flex items-center space-x-3 truncate">
+                    <FileText className="h-5.5 w-5.5 text-blue-600 flex-shrink-0" />
+                    <div className="truncate text-left">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                        {file.filename}
+                      </p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide">
+                        {formatDate(file.uploadedAt).split(',')[0]}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1 pl-2 shrink-0">
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 text-gray-505 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
+                      title="Download Attachment"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
+                      className="p-1.5 text-gray-505 hover:text-red-650 hover:bg-red-50 dark:text-gray-400 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
+                      title="Delete Attachment"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload new files */}
+          <div className={attachments.length > 0 ? 'border-t border-gray-150 pt-5 dark:border-gray-800' : ''}>
+            <p className="text-xs font-semibold text-gray-655 dark:text-gray-350 mb-3 block">
+              Upload New Files
+            </p>
+            <FileUpload
+              onUpload={(files) => uploadMutation.mutate(files)}
+              isLoading={uploadMutation.isPending}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

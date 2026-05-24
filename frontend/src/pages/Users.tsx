@@ -100,10 +100,10 @@ export const Users: React.FC = () => {
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-150 dark:border-gray-800 text-xs font-semibold text-gray-550 dark:text-gray-400 uppercase tracking-widest">
                   <th className="px-5 py-4">User Details</th>
-                  <th className="px-5 py-4">Security Role</th>
-                  <th className="px-5 py-4">Last Logon</th>
+                  <th className="px-5 py-4">Role</th>
+                  <th className="px-5 py-4">Last Login</th>
                   <th className="px-5 py-4">Access Status</th>
-                  <th className="px-5 py-4 text-right">Account Actions</th>
+                  {/* <th className="px-5 py-4 text-right">Account Actions</th> */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-150 dark:divide-gray-800 text-sm">
@@ -129,15 +129,18 @@ export const Users: React.FC = () => {
                       <td className="px-5 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <select
+                          {/* <select
                             value={usr.role || 'user'}
                             onChange={(e) => handleRoleChange(usr._id, e.target.value)}
                             disabled={updateMutation.isPending}
                             className="text-xs bg-gray-50 text-gray-850 py-1 px-2.5 rounded-md border border-gray-150 dark:bg-gray-900 dark:text-white dark:border-gray-700 outline-none select-none font-semibold cursor-pointer"
                           >
-                            <option value="user">User/Developer</option>
+                            <option value="user">User</option>
                             <option value="admin">Administrator</option>
-                          </select>
+                          </select> */}
+                          <div className="font-semibold text-gray-900 dark:text-gray-150 leading-5 capitalize">
+                              {usr.roleId?.name }
+                            </div>
                         </div>
                       </td>
 
@@ -164,7 +167,7 @@ export const Users: React.FC = () => {
                         </span>
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap text-right">
+                      {/* <td className="px-5 py-4 whitespace-nowrap text-right">
                         <Button
                           variant={isActive ? 'danger' : 'success'}
                           size="sm"
@@ -175,7 +178,7 @@ export const Users: React.FC = () => {
                           <Power className="h-3.5 w-3.5 mr-1" />
                           {isActive ? 'Lock Account' : 'Unlock Account'}
                         </Button>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })}

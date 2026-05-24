@@ -31,11 +31,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const accessToken = generateAccessToken({ userId: String(user._id), email: user.email });
   const refreshToken = generateRefreshToken({ userId: String(user._id), email: user.email });
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   // Store refresh token in httpOnly cookie
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
@@ -77,10 +79,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const accessToken = generateAccessToken({ userId: String(user._id), email: user.email });
   const refreshToken = generateRefreshToken({ userId: String(user._id), email: user.email });
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'none',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
@@ -116,10 +120,12 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const isProd = process.env.NODE_ENV === 'production';
+
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'none'
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax'
   });
   return res.json({ message: 'Logged out successfully.' });
 });

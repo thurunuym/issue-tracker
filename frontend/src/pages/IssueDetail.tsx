@@ -7,7 +7,6 @@ import {
   Download,
   ArrowLeft,
   Edit,
-  MessageSquare,
   Play,
   CheckCircle,
   XCircle,
@@ -19,8 +18,6 @@ import issuesApi from '../services/issuesApi';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import Textarea from '../components/ui/Textarea';
-import FileUpload from '../components/ui/FileUpload';
 import Modal from '../components/ui/Modal';
 import Spinner from '../components/ui/Spinner';
 import formatDate from '../utils/formatDate';
@@ -32,6 +29,8 @@ export const IssueDetail: React.FC = () => {
   const queryClient = useQueryClient();
 
   const currentUserId = localStorage.getItem('userId') || '';
+  const { role } = useAppSelector((state) => state.auth);
+  const isAdmin = role === 'admin';
 
   const canEditAny = usePermission('issue:update:any');
   const canEditOwn = usePermission('issue:update:own');
@@ -40,10 +39,6 @@ export const IssueDetail: React.FC = () => {
   // Interactive actions modals
   const [resolveOpen, setResolveOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
-
-  // Comments state
-  const [newComment, setNewComment] = useState('');
-  const [isCommentMutating, setIsCommentMutating] = useState(false);
 
   // Fetch issue details
   const { data: issue, isLoading, error } = useQuery({
@@ -77,18 +72,6 @@ export const IssueDetail: React.FC = () => {
     }
   });
 
-  // Mutator for file uploads
-  const uploadMutation = useMutation({
-    mutationFn: (files: File[]) => issuesApi.addAttachments(id!, files),
-    onSuccess: () => {
-      toast.success('File(s) uploaded successfully!');
-      queryClient.invalidateQueries({ queryKey: ['issue', id] });
-      queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'File upload failed.');
-    }
-  });
 
   // Mutator for attachment deletion
   const deleteAttachmentMutation = useMutation({
@@ -126,8 +109,6 @@ export const IssueDetail: React.FC = () => {
   }
 
   // Determine fine-grained user edit permission
-  const { role } = useAppSelector((state) => state.auth);
-  const isAdmin = role === 'admin';
   const creatorId = typeof issue.createdBy === 'object' ? issue.createdBy?._id : issue.createdBy;
   const isCreatorClient = String(creatorId) === String(currentUserId);
   const canModifyTicket = canEditAny || (canEditOwn && isCreatorClient);
@@ -156,24 +137,6 @@ export const IssueDetail: React.FC = () => {
     patchMutation.mutate({ status: 'Open' });
   };
 
-  // Submit comments/audit messages
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    setIsCommentMutating(true);
-    const commentToast = toast.loading('Registering Comment...');
-    try {
-      await issuesApi.addComment(id!, newComment);
-      setNewComment('');
-      toast.success('Comment logged in timelines audit trail!', { id: commentToast });
-      refetchActivities();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to submit comment log.', { id: commentToast });
-    } finally {
-      setIsCommentMutating(false);
-    }
-  };
 
   const attachments = issue.attachments || [];
   const commentsFeed = activityData?.activities || [];
@@ -267,59 +230,66 @@ export const IssueDetail: React.FC = () => {
                 No files uploaded to this ticket.
               </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {attachments.map((file: any, idx: number) => (
-                  <div
-                    key={file.publicId || idx}
-                    className="flex items-center justify-between p-3.5 border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-805 dark:bg-gray-900 shadow-xs text-left"
-                  >
-                    <div className="flex items-center space-x-3 truncate">
-                      <FileText className="h-5.5 w-5.5 text-blue-600 flex-shrink-0" />
-                      <div className="truncate text-left">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                          {file.filename}
-                        </p>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide">
-                          {formatDate(file.uploadedAt).split(',')[0]}
-                        </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {attachments.map((file: any, idx: number) => {
+                  const isImage = /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.filename || '') ||
+                                  /\.(jpe?g|png|gif|webp|svg|bmp)/i.test(file.url || '');
+
+                  return (
+                    <div
+                      key={file.publicId || idx}
+                      className="overflow-hidden border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-805 dark:bg-gray-900 shadow-xs text-left"
+                    >
+                      {/* Image preview */}
+                      {isImage && (
+                        <a href={file.url} target="_blank" rel="noreferrer" className="block">
+                          <img
+                            src={file.url}
+                            alt={file.filename}
+                            className="w-full h-44 object-cover bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
+                            loading="lazy"
+                          />
+                        </a>
+                      )}
+
+                      {/* File info row */}
+                      <div className="flex items-center justify-between p-3.5">
+                        <div className="flex items-center space-x-3 truncate">
+                          {!isImage && <FileText className="h-5.5 w-5.5 text-blue-600 flex-shrink-0" />}
+                          <div className="truncate text-left">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                              {file.filename}
+                            </p>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide">
+                              {formatDate(file.uploadedAt).split(',')[0]}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-1 pl-2 shrink-0">
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 text-gray-505 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
+                            title="Download Attachment"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                          {canModifyTicket && (
+                            <button
+                              onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
+                              className="p-1.5 text-gray-505 hover:text-red-650 hover:bg-red-50 dark:text-gray-400 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
+                              title="Delete Attachment"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center space-x-1 pl-2 shrink-0">
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 text-gray-505 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
-                        title="Download Attachment"
-                      >
-                        <Download className="h-4 w-4" />
-                      </a>
-                      {canModifyTicket && (
-                        <button
-                          onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
-                          className="p-1.5 text-gray-505 hover:text-red-650 hover:bg-red-50 dark:text-gray-400 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
-                          title="Delete Attachment"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Render file uploader element */}
-            {canModifyTicket && (
-              <div className="mt-5.5 border-t border-gray-150 pt-5.5 dark:border-gray-800">
-                <p className="text-xs font-semibold text-gray-655 dark:text-gray-350 mb-3 block">
-                  Add New Files to Ticket
-                </p>
-                <FileUpload
-                  onUpload={(files) => uploadMutation.mutate(files)}
-                  isLoading={uploadMutation.isPending}
-                />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -329,24 +299,6 @@ export const IssueDetail: React.FC = () => {
             <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-5 leading-4">
               Audit Timeline & Comments Logs
             </h2>
-
-            {/* Comment submittal form */}
-            <form onSubmit={handleCommentSubmit} className="mb-6 space-y-3">
-              <Textarea
-                placeholder="Log a comment or make audit notes..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                disabled={isCommentMutating}
-                className="text-sm"
-                rows={3}
-              />
-              <div className="flex justify-end">
-                <Button variant="primary" size="sm" type="submit" isLoading={isCommentMutating}>
-                  <MessageSquare className="h-4 w-4 mr-1.5 stroke-[2.5]" />
-                  Log Comment
-                </Button>
-              </div>
-            </form>
 
             {/* Activity entries */}
             {commentsFeed.length === 0 ? (
