@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Edit2, FileText, Trash2, Download } from 'lucide-react';
+import { ArrowLeft, Edit2, FileText, Trash2, Download, Upload } from 'lucide-react';
 import issuesApi from '../services/issuesApi';
 import IssueForm from '../components/issues/IssueForm';
 import FileUpload from '../components/ui/FileUpload';
@@ -14,7 +14,6 @@ export const IssueEdit: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Query actual issue entries
   const { data: issue, isLoading, error } = useQuery({
     queryKey: ['issue', id],
     queryFn: () => issuesApi.getIssueById(id!),
@@ -23,25 +22,21 @@ export const IssueEdit: React.FC = () => {
 
   const queryKeyArr = ['issue', id];
 
-  // Mutator for ticket edit submissions
   const editMutation = useMutation({
     mutationFn: (payload: any) => issuesApi.updateIssue(id!, payload),
     onSuccess: (updatedData) => {
       toast.success('Issue updated successfully!');
-      // Update cache in place — backend returns { issue: ... }
       const issueObj = updatedData.issue || updatedData;
       queryClient.setQueryData(queryKeyArr, issueObj);
       queryClient.invalidateQueries({ queryKey: ['issues'] });
       queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
-      // Go back to details view
       navigate(`/issues/${id}`);
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Access Denied: You do not have permissions to edit this ticket.');
+      toast.error(err.response?.data?.message || 'Failed to update issue.');
     },
   });
 
-  // Mutator for file uploads
   const uploadMutation = useMutation({
     mutationFn: (files: File[]) => issuesApi.addAttachments(id!, files),
     onSuccess: () => {
@@ -54,11 +49,10 @@ export const IssueEdit: React.FC = () => {
     }
   });
 
-  // Mutator for attachment deletion
   const deleteAttachmentMutation = useMutation({
     mutationFn: (publicId: string) => issuesApi.deleteAttachment(id!, publicId),
     onSuccess: () => {
-      toast.success('Attachment removed from ticket.');
+      toast.success('Attachment removed.');
       queryClient.invalidateQueries({ queryKey: ['issue', id] });
       queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
     },
@@ -73,10 +67,9 @@ export const IssueEdit: React.FC = () => {
       description: formValues.description,
       priority: formValues.priority,
       severity: formValues.severity,
-      assignedTo: formValues.assignedTo || null, // null removes current assignment
+      assignedTo: formValues.assignedTo || null,
       dueDate: formValues.dueDate ? new Date(formValues.dueDate).toISOString() : null,
     };
-
     editMutation.mutate(payload);
   };
 
@@ -84,14 +77,14 @@ export const IssueEdit: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center p-24">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm text-gray-500 font-medium">Downloading ticket variables for editing...</p>
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-450 font-medium">Loading issue data...</p>
       </div>
     );
   }
 
   if (error || !issue) {
     return (
-      <div className="p-8 text-center bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-350 rounded-xl max-w-2xl mx-auto">
+      <div className="p-8 text-center bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-xl max-w-2xl mx-auto border border-red-200 dark:border-red-800/30">
         <h3 className="font-bold text-lg">Error loading issue data</h3>
         <p className="text-sm mt-1">Please ensure you are authenticated or try reloading.</p>
         <Link to={`/issues/${id}`} className="mt-4 inline-flex items-center text-sm font-semibold text-blue-600 hover:underline">
@@ -102,9 +95,7 @@ export const IssueEdit: React.FC = () => {
     );
   }
 
-  // Map database format to form prefilled standards
   const assigneeId = typeof issue.assignedTo === 'object' ? issue.assignedTo?._id : issue.assignedTo;
-
   const formPreset = {
     title: issue.title,
     description: issue.description,
@@ -117,84 +108,110 @@ export const IssueEdit: React.FC = () => {
   const attachments = issue.attachments || [];
 
   return (
-    <div className="space-y-6 text-left p-1">
-      {/* Detail header */}
-      <div className="space-y-2 border-b border-gray-150 pb-5 dark:border-gray-800">
+    <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div>
         <Link
           to={`/issues/${id}`}
-          className="inline-flex items-center text-xs font-semibold text-gray-550 hover:text-blue-500 hover:underline cursor-pointer"
+          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to details
+          Back to Details
         </Link>
-        <div className="flex items-center space-x-2">
-          <Edit2 className="h-6 w-6 text-blue-600 dark:text-blue-450" />
-          <h1 className="text-xl md:text-2xl font-bold text-gray-901 dark:text-white tracking-tight">
-            Modify Ticket
-          </h1>
+
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+            <Edit2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Edit Issue
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-450 mt-0.5">
+              Update issue details and properties
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto space-y-6">
-        <IssueForm
-          initialValues={formPreset}
-          onSubmit={handleEditSubmit}
-          isLoading={editMutation.isPending}
-          submitButtonText="Save Ticket Changes"
-        />
+      {/* Edit Form */}
+      <IssueForm
+        initialValues={formPreset}
+        onSubmit={handleEditSubmit}
+        isLoading={editMutation.isPending}
+        submitButtonText="Save Changes"
+      />
 
-        {/* File Attachments Section */}
-        <div className="bg-white p-6 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left max-w-2xl mx-auto">
-          <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-4 leading-4">
-            File Attachments
+      {/* Attachments Section */}
+      <div className="bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+          <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 uppercase tracking-wider">
+            <Upload className="h-4 w-4 text-blue-500" />
+            Attachments
           </h2>
+        </div>
 
-          {/* Existing attachments preview */}
+        <div className="p-6 space-y-5">
+          {/* Existing attachments */}
           {attachments.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-              {attachments.map((file: any, idx: number) => (
-                <div
-                  key={file.publicId || idx}
-                  className="flex items-center justify-between p-3.5 border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-805 dark:bg-gray-900 shadow-xs text-left"
-                >
-                  <div className="flex items-center space-x-3 truncate">
-                    <FileText className="h-5.5 w-5.5 text-blue-600 flex-shrink-0" />
-                    <div className="truncate text-left">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                        {file.filename}
-                      </p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide">
-                        {formatDate(file.uploadedAt).split(',')[0]}
-                      </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {attachments.map((file: any, idx: number) => {
+                const isImage = /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.filename || '') ||
+                                /\.(jpe?g|png|gif|webp|svg|bmp)/i.test(file.url || '');
+                return (
+                  <div
+                    key={file.publicId || idx}
+                    className="group flex items-center justify-between p-3 border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-800 dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isImage ? (
+                        <img
+                          src={file.url}
+                          alt={file.filename}
+                          className="h-10 w-10 rounded-lg object-cover bg-gray-200 dark:bg-gray-800 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex-shrink-0">
+                          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[180px]">
+                          {file.filename}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                          {formatDate(file.uploadedAt).split(',')[0]}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 pl-2 shrink-0">
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        title="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                      <button
+                        onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-1 pl-2 shrink-0">
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 text-gray-505 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
-                      title="Download Attachment"
-                    >
-                      <Download className="h-4 w-4" />
-                    </a>
-                    <button
-                      onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
-                      className="p-1.5 text-gray-505 hover:text-red-650 hover:bg-red-50 dark:text-gray-400 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
-                      title="Delete Attachment"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {/* Upload new files */}
-          <div className={attachments.length > 0 ? 'border-t border-gray-150 pt-5 dark:border-gray-800' : ''}>
-            <p className="text-xs font-semibold text-gray-655 dark:text-gray-350 mb-3 block">
+          {/* Upload new */}
+          <div className={attachments.length > 0 ? 'border-t border-gray-150 dark:border-gray-800 pt-5' : ''}>
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-450 mb-3">
               Upload New Files
             </p>
             <FileUpload

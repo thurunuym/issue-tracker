@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ticket } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import issuesApi from '../services/issuesApi';
 import IssueForm from '../components/issues/IssueForm';
 import toast from 'react-hot-toast';
@@ -10,7 +10,6 @@ export const IssueCreate: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Create mutation
   const createMutation = useMutation({
     mutationFn: (values: any) => {
       const payload = {
@@ -21,19 +20,17 @@ export const IssueCreate: React.FC = () => {
         assignedTo: values.assignedTo || undefined,
         dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       };
-
       return issuesApi.createIssue(payload);
     },
     onSuccess: (data) => {
-      toast.success('Ticket created successfully!');
+      toast.success('Issue created successfully!');
       queryClient.invalidateQueries({ queryKey: ['issues'] });
       queryClient.invalidateQueries({ queryKey: ['issueStats'] });
-      // Reroute to newly logged ticket — backend returns { issue: ... }
       const issue = data.issue || data;
       navigate(`/issues/${issue._id}`);
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Access Denied: Inadequate authorization to log tickets.');
+      toast.error(err.response?.data?.message || 'Failed to create issue. Please try again.');
     },
   });
 
@@ -42,31 +39,38 @@ export const IssueCreate: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 text-left p-1 animate-fadeIn">
-      {/* Title */}
-      <div className="space-y-2 border-b border-gray-150 pb-5 dark:border-gray-800">
+    <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
+      {/* Breadcrumb + Header */}
+      <div>
         <Link
           to="/issues"
-          className="inline-flex items-center text-xs font-semibold text-gray-550 hover:text-blue-500 hover:underline cursor-pointer"
+          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          Back to list
+          Back to Issues
         </Link>
-        <div className="flex items-center space-x-2">
-          <Ticket className="h-6 w-6 text-blue-600 dark:text-blue-450" />
-          <h1 className="text-xl md:text-2xl font-bold text-gray-901 dark:text-white tracking-tight">
-            Log New Issue Ticket
-          </h1>
+
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <Plus className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Create New Issue
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-450 mt-0.5">
+              Log a new bug report or feature request
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        <IssueForm
-          onSubmit={handleCreateSubmit}
-          isLoading={createMutation.isPending}
-          submitButtonText="Submit New Issue"
-        />
-      </div>
+      {/* Form */}
+      <IssueForm
+        onSubmit={handleCreateSubmit}
+        isLoading={createMutation.isPending}
+        submitButtonText="Create Issue"
+      />
     </div>
   );
 };

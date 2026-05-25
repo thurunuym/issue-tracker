@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ClipboardList, Menu, ChevronDown, Shield, Mail as MailIcon } from 'lucide-react';
+import { Menu, ChevronDown, Shield, Mail as MailIcon } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/store';
 import { toggleSidebar } from '../../features/ui/uiSlice';
 import Avatar from '../ui/Avatar';
@@ -8,6 +8,7 @@ import ThemeToggle from './ThemeToggle';
 export const Navbar: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user, role } = useAppSelector((state) => state.auth);
+  const { theme } = useAppSelector((state) => state.ui);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -27,22 +28,23 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-gray-150 bg-white px-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 transition-colors">
-      <div className="flex items-center space-x-3.5">
+      <div className="flex items-center space-x-3">
         <button
           onClick={() => dispatch(toggleSidebar())}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="flex items-center space-x-2">
-          <ClipboardList className="h-6 w-6 text-blue-600 dark:text-blue-450" />
-          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-            Issue Tracker
-          </span>
+        <div className="flex items-center space-x-2.5">
+          <img 
+            src={theme === 'dark' ? '/logo_light.png' : '/logo_dark.png'} 
+            alt="BugBase Logo"
+            className="h-9 w-auto object-contain"
+          />
         </div>
       </div>
 
-      <div className="flex items-center space-x-3.5">
+      <div className="flex items-center space-x-3">
         <ThemeToggle />
 
         {user && (
@@ -60,12 +62,12 @@ export const Navbar: React.FC = () => {
                   {role || 'User'}
                 </span>
               </div>
-              <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown card */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-xl shadow-xl z-50 overflow-hidden animate-fadeIn">
+              <div className="absolute right-0 mt-2.5 w-72 bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-xl shadow-xl z-50 overflow-hidden animate-fadeIn">
                 <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border-b border-gray-150 dark:border-gray-800">
                   <div className="flex items-center space-x-3">
                     <Avatar src={user.avatar} name={user.name} size="md" />

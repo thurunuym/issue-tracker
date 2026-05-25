@@ -23,7 +23,7 @@ const initialState: IssueState = {
     severity: '',
     q: '',
     page: 1,
-    limit: 10,
+    limit: 8,
   },
   selectedIssueId: null,
   exportStatus: 'idle',
@@ -51,7 +51,7 @@ const issueSlice = createSlice({
         severity: '',
         q: '',
         page: 1,
-        limit: 10,
+        limit: 8,
       };
     },
     setSelectedIssueId(state, action: PayloadAction<string | null>) {

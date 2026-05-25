@@ -12,19 +12,19 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities = [] }) =
   const getIcon = (action: string) => {
     switch (action) {
       case 'CREATED':
-        return <PlusCircle className="h-4.5 w-4.5 text-blue-600" />;
+        return <PlusCircle className="h-[18px] w-[18px] text-blue-600" />;
       case 'UPDATED':
-        return <Edit className="h-4.5 w-4.5 text-amber-600" />;
+        return <Edit className="h-[18px] w-[18px] text-amber-600" />;
       case 'STATUS_CHANGED':
       case 'RESOLVED':
       case 'CLOSED':
-        return <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />;
+        return <CheckCircle2 className="h-[18px] w-[18px] text-emerald-600" />;
       case 'ASSIGNED':
-        return <UserPlus className="h-4.5 w-4.5 text-indigo-650" />;
+        return <UserPlus className="h-[18px] w-[18px] text-indigo-600" />;
       case 'COMMENTED':
-        return <MessageSquare className="h-4.5 w-4.5 text-purple-650" />;
+        return <MessageSquare className="h-[18px] w-[18px] text-purple-600" />;
       default:
-        return <AlertCircle className="h-4.5 w-4.5 text-gray-500" />;
+        return <AlertCircle className="h-[18px] w-[18px] text-gray-500" />;
     }
   };
 
@@ -49,7 +49,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities = [] }) =
 
   if (activities.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-sm text-gray-500 border border-dashed border-gray-250 dark:border-gray-800 rounded-xl">
+      <div className="flex flex-col items-center justify-center p-8 text-center text-sm text-gray-400 dark:text-gray-500 border border-dashed border-gray-250 dark:border-gray-800 rounded-xl">
         No recent activities recorded.
       </div>
     );
@@ -86,7 +86,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities = [] }) =
                       <p className="leading-5">
                         {activity.message || `Performed "${activity.action}"`}
                         {activity.field && (
-                          <span className="ml-1 text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-550 dark:text-gray-405 font-mono">
+                          <span className="ml-1 text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-550 dark:text-gray-450 font-mono">
                             {activity.field}
                           </span>
                         )}

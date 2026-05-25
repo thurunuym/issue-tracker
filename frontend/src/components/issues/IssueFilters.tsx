@@ -71,20 +71,20 @@ export const IssueFilters: React.FC = () => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5 bg-white dark:bg-gray-901 p-5 border border-gray-150 dark:border-gray-800 rounded-xl shadow-sm">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 bg-white dark:bg-gray-901 p-5 border border-gray-150 dark:border-gray-800 rounded-xl shadow-sm">
       <div className="relative">
         <Input
           id="issue-search"
-          placeholder="Search by title & description... (press '/')"
+          placeholder="Search issues… ( / )"
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="pl-9.5"
+          className="pl-10"
         />
-        <div className="absolute left-3.5 top-3 text-gray-400 dark:text-gray-500 pointer-events-none">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
           {isSearchPending ? (
-            <Loader2 className="h-4.5 w-4.5 animate-spin text-blue-500" />
+            <Loader2 className="h-[18px] w-[18px] animate-spin text-blue-500" />
           ) : (
-            <Search className="h-4.5 w-4.5" />
+            <Search className="h-[18px] w-[18px]" />
           )}
         </div>
       </div>

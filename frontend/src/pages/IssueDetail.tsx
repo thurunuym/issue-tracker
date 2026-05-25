@@ -10,7 +10,12 @@ import {
   Play,
   CheckCircle,
   XCircle,
-  RotateCcw
+  RotateCcw,
+  Calendar,
+  User,
+  UserCheck,
+  Clock,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useAppSelector } from '../app/store';
 import usePermission from '../hooks/usePermission';
@@ -55,28 +60,24 @@ export const IssueDetail: React.FC = () => {
 
   const queryKeyArr = ['issue', id];
 
-  // Global mutator for ticket patches (workflow updates)
   const patchMutation = useMutation({
     mutationFn: (payload: any) => issuesApi.updateIssue(id!, payload),
     onSuccess: (updatedData) => {
-      toast.success('Ticket updated successfully!');
-      // Backend returns { issue: ... } — unwrap before caching
+      toast.success('Issue updated successfully!');
       const issueObj = updatedData.issue || updatedData;
       queryClient.setQueryData(queryKeyArr, issueObj);
       queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
       queryClient.invalidateQueries({ queryKey: ['issueStats'] });
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Access Denied: You do not have permissions to modify this ticket.');
+      toast.error(err.response?.data?.message || 'Failed to update issue.');
     }
   });
 
-
-  // Mutator for attachment deletion
   const deleteAttachmentMutation = useMutation({
     mutationFn: (publicId: string) => issuesApi.deleteAttachment(id!, publicId),
     onSuccess: () => {
-      toast.success('Attachment removed from ticket.');
+      toast.success('Attachment removed.');
       queryClient.invalidateQueries({ queryKey: ['issue', id] });
       queryClient.invalidateQueries({ queryKey: ['issueActivities', id] });
     },
@@ -89,16 +90,16 @@ export const IssueDetail: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center p-24">
         <Spinner size="lg" />
-        <p className="mt-4 text-sm text-gray-550 font-medium">Re-populating ticket detail registers...</p>
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-450 font-medium">Loading issue details...</p>
       </div>
     );
   }
 
   if (error || !issue) {
     return (
-      <div className="p-8 text-center bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-350 rounded-xl max-w-2xl mx-auto">
-        <h3 className="font-bold text-lg">Failed to retrieve ticket details</h3>
-        <p className="text-sm mt-1">Please ensure you have permissions or seek administrator authorization credentials.</p>
+      <div className="p-8 text-center bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-xl max-w-2xl mx-auto border border-red-200 dark:border-red-800/30">
+        <h3 className="font-bold text-lg">Failed to load issue</h3>
+        <p className="text-sm mt-1 text-red-600 dark:text-red-400/80">Please check your permissions or try again.</p>
         <Link to="/issues" className="mt-4 inline-flex items-center text-sm font-semibold text-blue-600 hover:underline">
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           Back to Issues
@@ -107,313 +108,330 @@ export const IssueDetail: React.FC = () => {
     );
   }
 
-  // Determine fine-grained user edit permission
+  // Permission checks
   const creatorId = typeof issue.createdBy === 'object' ? issue.createdBy?._id : issue.createdBy;
   const isCreatorClient = String(creatorId) === String(currentUserId);
   const assigneeId = typeof issue.assignedTo === 'object' ? issue.assignedTo?._id : issue.assignedTo;
   const isAssignee = !!assigneeId && String(assigneeId) === String(currentUserId);
   const canModifyTicket = canEditAny || (canEditOwn && isCreatorClient) || isAssignee;
-
-  // For non-admin users: hide "Edit Details" when the issue is assigned to them but not created by them
   const isAssigneeOnly = !isCreatorClient && isAssignee;
   const showEditButton = isAdmin || !isAssigneeOnly;
 
-  // Workflow transitions trigger handlers
-  const handleStartProgress = () => {
-    patchMutation.mutate({ status: 'In Progress' });
-  };
-
-  const handleResolveConfirm = () => {
-    patchMutation.mutate({ status: 'Resolved' });
-    setResolveOpen(false);
-  };
-
-  const handleCloseConfirm = () => {
-    patchMutation.mutate({ status: 'Closed' });
-    setCloseOpen(false);
-  };
-
-  const handleReopen = () => {
-    patchMutation.mutate({ status: 'Open' });
-  };
-
+  const handleStartProgress = () => patchMutation.mutate({ status: 'In Progress' });
+  const handleResolveConfirm = () => { patchMutation.mutate({ status: 'Resolved' }); setResolveOpen(false); };
+  const handleCloseConfirm = () => { patchMutation.mutate({ status: 'Closed' }); setCloseOpen(false); };
+  const handleReopen = () => patchMutation.mutate({ status: 'Open' });
 
   const attachments = issue.attachments || [];
   const commentsFeed = activityData?.activities || [];
 
+  // Helpers
+  const PropertyRow: React.FC<{ icon: React.ReactNode; label: string; children: React.ReactNode }> = ({ icon, label, children }) => (
+    <div className="flex items-center justify-between py-3.5">
+      <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+        {children}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6 text-left p-1">
-      {/* Detail header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-150 pb-5 dark:border-gray-800">
-        <div className="space-y-2">
-          <Link
-            to="/issues"
-            className="inline-flex items-center text-xs font-semibold text-gray-500 hover:text-blue-500 hover:underline cursor-pointer"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1.5" />
-            Back to Issues registry
-          </Link>
-          <div className="flex flex-wrap items-center gap-3.5">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-901 dark:text-white tracking-tight leading-8">
+    <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn">
+      {/* Header */}
+      <div>
+        <Link
+          to="/issues"
+          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
+          Back to Issues
+        </Link>
+
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="space-y-3">
+            <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-8">
               {issue.title}
             </h1>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge type="status" value={issue.status} />
               <Badge type="priority" value={issue.priority} />
               <Badge type="severity" value={issue.severity} />
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                Created {formatDate(issue.createdAt)}
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          {canModifyTicket && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {issue.status === 'Open' && (
+                <Button variant="secondary" size="sm" onClick={handleStartProgress} isLoading={patchMutation.isPending}>
+                  <Play className="h-4 w-4 mr-1.5 fill-current" />
+                  Start Progress
+                </Button>
+              )}
+              {issue.status === 'In Progress' && (
+                <Button variant="success" size="sm" onClick={() => setResolveOpen(true)} isLoading={patchMutation.isPending}>
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Resolve
+                </Button>
+              )}
+              {(issue.status === 'Resolved' || issue.status === 'In Progress' || issue.status === 'Open') && (
+                <Button variant="danger" size="sm" onClick={() => setCloseOpen(true)} isLoading={patchMutation.isPending}>
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Close
+                </Button>
+              )}
+              {(issue.status === 'Resolved' || issue.status === 'Closed') && (
+                <Button variant="outline" size="sm" onClick={handleReopen} isLoading={patchMutation.isPending}>
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Reopen
+                </Button>
+              )}
+              {showEditButton && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/issues/${issue._id}/edit`)}>
+                  <Edit className="h-4 w-4 mr-1.5" />
+                  Edit
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column — Description, Attachments, Timeline */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Description */}
+          <div className="bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+              <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                Description
+              </h2>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {issue.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Attachments */}
+          <div className="bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+              <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-blue-500" />
+                Attachments
+                {attachments.length > 0 && (
+                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                    ({attachments.length})
+                  </span>
+                )}
+              </h2>
+            </div>
+            <div className="p-6">
+              {attachments.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
+                  No files attached to this issue.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {attachments.map((file: any, idx: number) => {
+                    const isImage = /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.filename || '') ||
+                                    /\.(jpe?g|png|gif|webp|svg|bmp)/i.test(file.url || '');
+                    return (
+                      <div
+                        key={file.publicId || idx}
+                        className="overflow-hidden border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-800 dark:bg-gray-900 group"
+                      >
+                        {isImage && (
+                          <a href={file.url} target="_blank" rel="noreferrer" className="block">
+                            <img
+                              src={file.url}
+                              alt={file.filename}
+                              className="w-full h-40 object-cover bg-gray-100 dark:bg-gray-800 hover:opacity-90 transition-opacity"
+                              loading="lazy"
+                            />
+                          </a>
+                        )}
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {!isImage && (
+                              <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex-shrink-0">
+                                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[180px]">
+                                {file.filename}
+                              </p>
+                              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                                {formatDate(file.uploadedAt).split(',')[0]}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              title="Download"
+                            >
+                              <Download className="h-4 w-4" />
+                            </a>
+                            {canModifyTicket && (
+                              <button
+                                onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Activity Timeline */}
+          <div className="bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+              <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                Activity Timeline
+                {commentsFeed.length > 0 && (
+                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                    ({commentsFeed.length})
+                  </span>
+                )}
+              </h2>
+            </div>
+            <div className="p-6">
+              {commentsFeed.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+                  No activity recorded yet.
+                </p>
+              ) : (
+                <div className="max-h-[500px] overflow-y-auto pr-1">
+                  <div className="flow-root">
+                    <ul role="list" className="-mb-8">
+                      {commentsFeed.map((activity: any, idx: number) => {
+                        const author = activity.performedBy || { name: 'System' };
+                        return (
+                          <li key={activity._id || idx}>
+                            <div className="relative pb-8 text-left">
+                              {idx !== commentsFeed.length - 1 && (
+                                <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-150 dark:bg-gray-800" aria-hidden="true" />
+                              )}
+                              <div className="relative flex items-start space-x-3">
+                                <Avatar src={author.avatar} name={author.name} size="sm" className="ring-4 ring-white dark:ring-gray-901" />
+                                <div className="min-w-0 flex-1 text-left">
+                                  <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">{author.name}</span>
+                                    <span>{formatDate(activity.createdAt)}</span>
+                                  </div>
+                                  <p className="text-xs font-bold font-mono tracking-wider text-blue-600 dark:text-blue-400 mt-1 uppercase">
+                                    {activity.action}
+                                  </p>
+                                  <div className="text-sm text-gray-700 dark:text-gray-300 mt-1.5 leading-5 whitespace-pre-wrap">
+                                    {activity.message || `Action: ${activity.action}`}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {canModifyTicket && (
-          <div className="flex flex-wrap items-center gap-2">
-            {issue.status === 'Open' && (
-              <Button variant="secondary" size="sm" onClick={handleStartProgress} isLoading={patchMutation.isPending}>
-                <Play className="h-4 w-4 mr-1.5 fill-current" />
-                Start Progress
-              </Button>
-            )}
+        {/* Right column — Properties sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden sticky top-20">
+            <div className="px-5 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+              <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                Properties
+              </h2>
+            </div>
 
-            {issue.status === 'In Progress' && (
-              <Button variant="success" size="sm" onClick={() => setResolveOpen(true)} isLoading={patchMutation.isPending}>
-                <CheckCircle className="h-4 w-4 mr-1.5" />
-                Resolve Ticket
-              </Button>
-            )}
-
-            {(issue.status === 'Resolved' || issue.status === 'In Progress' || issue.status === 'Open') && (
-              <Button variant="danger" size="sm" onClick={() => setCloseOpen(true)} isLoading={patchMutation.isPending}>
-                <XCircle className="h-4 w-4 mr-1.5" />
-                Close Ticket
-              </Button>
-            )}
-
-            {(issue.status === 'Resolved' || issue.status === 'Closed') && (
-              <Button variant="outline" size="sm" onClick={handleReopen} isLoading={patchMutation.isPending}>
-                <RotateCcw className="h-4 w-4 mr-1.5" />
-                Reopen Ticket
-              </Button>
-            )}
-
-            {showEditButton && (
-              <Button variant="outline" size="sm" onClick={() => navigate(`/issues/${issue._id}/edit`)}>
-                <Edit className="h-4 w-4 mr-1.5" />
-                Edit Details
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Main detail layout columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6.5">
-        {/* Left Column (Description, attachments, comments) */}
-        <div className="lg:col-span-2 space-y-6.5 animate-fadeIn">
-          {/* Issue Description detail */}
-          <div className="bg-white p-6 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left">
-            <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-3.5 leading-4">
-              Ticket Description Notes
-            </h2>
-            <p className="text-gray-800 dark:text-gray-300 text-sm leading-6 whitespace-pre-wrap">
-              {issue.description}
-            </p>
-          </div>
-
-          {/* Attachments panel */}
-          <div className="bg-white p-6 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left">
-            <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-4 leading-4">
-              File Attachments List
-            </h2>
-
-            {attachments.length === 0 ? (
-              <p className="text-sm text-gray-550 dark:text-gray-550 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-5 text-center">
-                No files uploaded to this ticket.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {attachments.map((file: any, idx: number) => {
-                  const isImage = /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(file.filename || '') ||
-                                  /\.(jpe?g|png|gif|webp|svg|bmp)/i.test(file.url || '');
-
-                  return (
-                    <div
-                      key={file.publicId || idx}
-                      className="overflow-hidden border border-gray-150 bg-gray-50/50 rounded-lg dark:border-gray-805 dark:bg-gray-900 shadow-xs text-left"
-                    >
-                      {/* Image preview */}
-                      {isImage && (
-                        <a href={file.url} target="_blank" rel="noreferrer" className="block">
-                          <img
-                            src={file.url}
-                            alt={file.filename}
-                            className="w-full h-44 object-cover bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
-                            loading="lazy"
-                          />
-                        </a>
-                      )}
-
-                      {/* File info row */}
-                      <div className="flex items-center justify-between p-3.5">
-                        <div className="flex items-center space-x-3 truncate">
-                          {!isImage && <FileText className="h-5.5 w-5.5 text-blue-600 flex-shrink-0" />}
-                          <div className="truncate text-left">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                              {file.filename}
-                            </p>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wide">
-                              {formatDate(file.uploadedAt).split(',')[0]}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-1 pl-2 shrink-0">
-                          <a
-                            href={file.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1.5 text-gray-505 hover:text-blue-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
-                            title="Download Attachment"
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                          {canModifyTicket && (
-                            <button
-                              onClick={() => deleteAttachmentMutation.mutate(file.publicId)}
-                              className="p-1.5 text-gray-505 hover:text-red-650 hover:bg-red-50 dark:text-gray-400 dark:hover:bg-red-950/20 rounded-lg cursor-pointer transition-colors"
-                              title="Delete Attachment"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Timeline and commentary logs */}
-          <div className="bg-white p-6 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left">
-            <h2 className="text-sm font-semibold tracking-wider text-gray-400 dark:text-gray-500 uppercase mb-5 leading-4">
-              Audit Timeline & Comments Logs
-            </h2>
-
-            {/* Activity entries */}
-            {commentsFeed.length === 0 ? (
-              <p className="text-sm text-gray-550 dark:text-gray-500 text-center py-6">
-                No active audit entries logged.
-              </p>
-            ) : (
-              <div className="flow-root mt-4.5 border-t border-gray-150 pt-5 dark:border-gray-800 max-h-[500px] overflow-y-auto">
-                <ul role="list" className="-mb-8">
-                  {commentsFeed.map((activity: any, idx: number) => {
-                    const author = activity.performedBy || { name: 'System User' };
-                    return (
-                      <li key={activity._id || idx}>
-                        <div className="relative pb-8 text-left">
-                          {idx !== commentsFeed.length - 1 && (
-                            <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-150 dark:bg-gray-800" aria-hidden="true" />
-                          )}
-                          <div className="relative flex items-start space-x-3">
-                            <Avatar src={author.avatar} name={author.name} size="sm" className="ring-4 ring-white dark:ring-gray-901" />
-                            <div className="min-w-0 flex-1 text-left">
-                              <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
-                                <span className="font-semibold text-gray-900 dark:text-gray-100">{author.name}</span>
-                                <span>{formatDate(activity.createdAt)}</span>
-                              </div>
-                              <p className="text-xs font-bold font-mono tracking-wider text-blue-600 dark:text-blue-450 mt-1 uppercase">
-                                Action: {activity.action}
-                              </p>
-                              <div className="text-sm text-gray-700 dark:text-gray-300 mt-1.5 leading-5 whitespace-pre-wrap">
-                                {activity.message || `Recorded action: ${activity.action}`}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side Column (Properties bar: timestamps, assignee, tags) */}
-        <div className="space-y-6 animate-fadeIn">
-          {/* Metadata attributes box */}
-          <div className="bg-white p-5 border border-gray-150 dark:bg-gray-901 dark:border-gray-800 rounded-xl shadow-sm text-left">
-            <h2 className="text-xs font-semibold tracking-wider text-gray-450 dark:text-gray-505 uppercase mb-4">
-              Ticket Properties
-            </h2>
-
-            <div className="divide-y divide-gray-150 dark:divide-gray-800 text-sm">
-              <div className="flex justify-between py-3">
-                <span className="text-gray-500 dark:text-gray-400">Created By</span>
-                <div className="flex items-center space-x-1.5">
+            <div className="px-5 divide-y divide-gray-100 dark:divide-gray-800">
+              <PropertyRow icon={<User className="h-4 w-4 text-gray-400" />} label="Created By">
+                <div className="flex items-center gap-2">
                   <Avatar src={issue.createdBy?.avatar} name={issue.createdBy?.name || 'Unknown'} size="xs" />
-                  <span className="font-semibold text-gray-905 dark:text-gray-150">{issue.createdBy?.name || 'Unknown'}</span>
+                  <span>{issue.createdBy?.name || 'Unknown'}</span>
                 </div>
-              </div>
+              </PropertyRow>
 
-              <div className="flex justify-between py-3">
-                <span className="text-gray-500 dark:text-gray-400">Assigned To</span>
-                <div>
-                  {issue.assignedTo ? (
-                    <div className="flex items-center space-x-1.5">
-                      <Avatar src={issue.assignedTo.avatar} name={issue.assignedTo.name} size="xs" />
-                      <span className="font-semibold text-gray-905 dark:text-gray-150">{issue.assignedTo.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400 dark:text-gray-505 font-mono">Unassigned</span>
-                  )}
-                </div>
-              </div>
+              <PropertyRow icon={<UserCheck className="h-4 w-4 text-gray-400" />} label="Assigned To">
+                {issue.assignedTo ? (
+                  <div className="flex items-center gap-2">
+                    <Avatar src={issue.assignedTo.avatar} name={issue.assignedTo.name} size="xs" />
+                    <span>{issue.assignedTo.name}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">Unassigned</span>
+                )}
+              </PropertyRow>
 
-              <div className="flex justify-between py-3 whitespace-nowrap">
-                <span className="text-gray-500 dark:text-gray-400">Due Target</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-200">
-                  {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'None'}
+              <PropertyRow icon={<Calendar className="h-4 w-4 text-gray-400" />} label="Due Date">
+                <span className={!issue.dueDate ? 'text-gray-400 dark:text-gray-500 text-xs font-mono' : ''}>
+                  {issue.dueDate
+                    ? new Date(issue.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'Not set'}
                 </span>
-              </div>
+              </PropertyRow>
 
-              <div className="flex justify-between py-3 whitespace-nowrap">
-                <span className="text-gray-500 dark:text-gray-400 font-medium">Logged Date</span>
-                <span className="text-gray-700 dark:text-gray-300">
+              <PropertyRow icon={<Clock className="h-4 w-4 text-gray-400" />} label="Created">
+                <span className="text-gray-600 dark:text-gray-300 font-normal">
                   {formatDate(issue.createdAt).split('at')[0]}
                 </span>
-              </div>
+              </PropertyRow>
 
               {issue.resolvedAt && (
-                <div className="flex justify-between py-3">
-                  <span className="text-emerald-650 font-medium dark:text-emerald-400">Resolved Date</span>
-                  <span className="text-gray-750 dark:text-gray-300">{formatDate(issue.resolvedAt).split('at')[0]}</span>
-                </div>
+                <PropertyRow icon={<CheckCircle className="h-4 w-4 text-emerald-500" />} label="Resolved">
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {formatDate(issue.resolvedAt).split('at')[0]}
+                  </span>
+                </PropertyRow>
               )}
 
               {issue.closedAt && (
-                <div className="flex justify-between py-3">
-                  <span className="text-red-550 font-medium dark:text-red-400">Closed Date</span>
-                  <span className="text-gray-750 dark:text-gray-300">{formatDate(issue.closedAt).split('at')[0]}</span>
-                </div>
+                <PropertyRow icon={<XCircle className="h-4 w-4 text-red-500" />} label="Closed">
+                  <span className="text-red-600 dark:text-red-400">
+                    {formatDate(issue.closedAt).split('at')[0]}
+                  </span>
+                </PropertyRow>
               )}
             </div>
           </div>
-
-
         </div>
       </div>
 
-      {/* Confirmation transitions dialog screens */}
+      {/* Modals */}
       <Modal
         isOpen={resolveOpen}
         onClose={() => setResolveOpen(false)}
         onConfirm={handleResolveConfirm}
-        title="Resolve Ticket Issue"
-        description="Are you sure you want to mark this issue as resolved? This will log a resolved timestamp on the issue and record a resolved action in audit entries."
-        confirmText="Confirm Resolved"
+        title="Resolve Issue"
+        description="Mark this issue as resolved? A resolved timestamp will be logged."
+        confirmText="Confirm Resolve"
         cancelText="Cancel"
         variant="success"
         isConfirmLoading={patchMutation.isPending}
@@ -423,9 +441,9 @@ export const IssueDetail: React.FC = () => {
         isOpen={closeOpen}
         onClose={() => setCloseOpen(false)}
         onConfirm={handleCloseConfirm}
-        title="Close Ticket Issue"
-        description="Are you sure you want to close this issue? This will archive the operational status and log a closure timestamp automatically."
-        confirmText="Confirm Closure"
+        title="Close Issue"
+        description="Close this issue? It will be archived with a closure timestamp."
+        confirmText="Confirm Close"
         cancelText="Cancel"
         variant="danger"
         isConfirmLoading={patchMutation.isPending}

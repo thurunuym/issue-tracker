@@ -19,10 +19,11 @@ const COLORS: Record<string, string> = {
 
 export const StatusPieChart: React.FC<StatusPieChartProps> = ({ data }) => {
   const filteredData = data.filter((item) => item.value > 0);
+  const isDark = document.documentElement.classList.contains('dark');
 
   if (filteredData.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-gray-500">
+      <div className="flex h-64 items-center justify-center text-sm text-gray-400 dark:text-gray-500">
         No active status data to display
       </div>
     );
@@ -36,10 +37,12 @@ export const StatusPieChart: React.FC<StatusPieChartProps> = ({ data }) => {
             data={filteredData}
             cx="50%"
             cy="45%"
-            innerRadius={60}
-            outerRadius={80}
-            paddingAngle={3}
+            innerRadius={58}
+            outerRadius={82}
+            paddingAngle={4}
             dataKey="value"
+            strokeWidth={2}
+            stroke={isDark ? '#111827' : '#ffffff'}
           >
             {filteredData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#9CA3AF'} />
@@ -47,18 +50,29 @@ export const StatusPieChart: React.FC<StatusPieChartProps> = ({ data }) => {
           </Pie>
           <Tooltip
             contentStyle={{
-              background: '#1F2937',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#F9FAFB',
-              fontSize: '12px',
+              background: isDark ? '#1E2432' : '#ffffff',
+              border: `1px solid ${isDark ? '#2D3340' : '#E5E7EB'}`,
+              borderRadius: '10px',
+              color: isDark ? '#F9FAFB' : '#111827',
+              fontSize: '13px',
+              fontWeight: 500,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
           />
           <Legend
             verticalAlign="bottom"
             height={36}
             iconType="circle"
-            formatter={(val: string) => <span className="text-xs text-gray-650 dark:text-gray-300 font-medium">{val}</span>}
+            iconSize={8}
+            formatter={(val: string) => (
+              <span style={{
+                color: isDark ? '#D1D5DB' : '#4B5563',
+                fontSize: '12px',
+                fontWeight: 500,
+              }}>
+                {val}
+              </span>
+            )}
           />
         </PieChart>
       </ResponsiveContainer>

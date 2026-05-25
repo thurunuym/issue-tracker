@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 
 export const AppLayout: React.FC = () => {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gray-50 text-gray-901 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       {/* Top Header */}
       <Navbar />
 

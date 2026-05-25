@@ -118,7 +118,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       </svg>
 
       <div className="flex text-sm text-gray-650 dark:text-gray-300">
-        <span className="font-semibold text-blue-600 dark:text-blue-450 hover:underline">
+        <span className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
           Upload file(s)
         </span>
         <p className="pl-1 text-gray-450 dark:text-gray-500">or drag and drop here</p>

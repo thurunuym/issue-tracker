@@ -81,7 +81,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-gray-950 transition-colors">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl border border-gray-150 shadow-xl dark:bg-gray-900 dark:border-gray-800">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-blue-100 flex items-center justify-center rounded-xl text-blue-600 dark:bg-blue-950/40 dark:text-blue-450 mb-4 shadow-sm">
+          <div className="mx-auto h-12 w-12 bg-blue-100 flex items-center justify-center rounded-xl text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 mb-4 shadow-sm">
             <ClipboardList className="h-7 w-7" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-8">
@@ -104,10 +104,10 @@ export const Login: React.FC = () => {
               onChange={handleChange}
               error={errors.email}
               disabled={mutation.isPending}
-              className="pl-9.5"
+              className="pl-10"
             />
-            <div className="absolute left-3.5 top-10 text-gray-450 dark:text-gray-500 pointer-events-none">
-              <Mail className="h-4.2 w-4.2" />
+            <div className="absolute left-3 top-[38px] text-gray-400 dark:text-gray-500 pointer-events-none">
+              <Mail className="h-[18px] w-[18px]" />
             </div>
           </div>
 
@@ -122,10 +122,10 @@ export const Login: React.FC = () => {
               onChange={handleChange}
               error={errors.password}
               disabled={mutation.isPending}
-              className="pl-9.5"
+              className="pl-10"
             />
-            <div className="absolute left-3.5 top-10 text-gray-450 dark:text-gray-500 pointer-events-none">
-              <Lock className="h-4.2 w-4.2" />
+            <div className="absolute left-3 top-[38px] text-gray-400 dark:text-gray-500 pointer-events-none">
+              <Lock className="h-[18px] w-[18px]" />
             </div>
           </div>
 
@@ -145,7 +145,7 @@ export const Login: React.FC = () => {
           <span className="text-sm text-gray-550 dark:text-gray-400">Don't have an account? </span>
           <Link
             to="/register"
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-450 dark:hover:text-blue-400"
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-400"
           >
             Create account
           </Link>

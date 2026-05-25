@@ -85,7 +85,7 @@ export const Users: React.FC = () => {
           User Directory & Access Controls
         </h1>
         <p className="text-sm text-gray-550 dark:text-gray-400 mt-0.5">
-          View developers profiles, promote roles, and switch account locks
+          View developers profiles and roles
         </p>
       </div>
 

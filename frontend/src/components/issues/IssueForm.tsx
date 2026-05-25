@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { AlertTriangle, Info } from 'lucide-react';
 import { useAppSelector } from '../../app/store';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -61,6 +62,8 @@ export const IssueForm: React.FC<IssueFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
 
   // Clean form pre-populations if initialValues arrive asynchronously
   useEffect(() => {
@@ -76,8 +79,7 @@ export const IssueForm: React.FC<IssueFormProps> = ({
     }
   }, [initialValues]);
 
-  // Fetch users for the assignment drop-down using TanStack Query
-  // Only fetch user list for admin role (the endpoint is admin-only)
+  // admin only: Fetch users for the assignment dropdown
   const { data: usersData } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getUsers(),
@@ -91,7 +93,7 @@ export const IssueForm: React.FC<IssueFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Clear validation error when typing gets updated
+    setTouched((prev) => ({ ...prev, [name]: true }));
     if (errors[name]) {
       setErrors((prev) => {
         const copy = { ...prev };
@@ -103,8 +105,8 @@ export const IssueForm: React.FC<IssueFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
 
-    // Prepare form data with trimmed strings
     const formDataToValidate = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -114,20 +116,17 @@ export const IssueForm: React.FC<IssueFormProps> = ({
       dueDate: form.dueDate,
     };
 
-    console.log('Submitting form data:', formDataToValidate); // Debug log
-
-    // Trigger frontend verification via Zod
     const result = issueFormSchema.safeParse(formDataToValidate);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((err: z.ZodIssue) => {
         if (err.path[0]) {
-          fieldErrors[err.path[0] as string] = err.message;
+          const fieldName = err.path[0] as string;
+          fieldErrors[fieldName] = err.message;
         }
       });
       setErrors(fieldErrors);
-      console.error('Validation errors:', fieldErrors); // Debug log
-      toast.error('Please correct the validation errors first.');
+      toast.error('Please review the form and correct validation errors.');
       return;
     }
 
@@ -152,94 +151,119 @@ export const IssueForm: React.FC<IssueFormProps> = ({
     { label: 'Critical', value: 'Critical' },
   ];
 
+  const descLen = form.description.length;
+  const descValid = descLen >= 10;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5.5 text-left bg-white dark:bg-gray-901 p-6 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm max-w-2xl mx-auto">
-      <Input
-        label="Issue Title*"
-        name="title"
-        id="title"
-        placeholder="Enter a descriptive title..."
-        value={form.title}
-        onChange={handleChange}
-        error={errors.title}
-        disabled={isLoading}
-      />
-
-      <Textarea
-        label="Detailed Description*"
-        name="description"
-        id="description"
-        placeholder="Describe the issue, steps to reproduce, or notes..."
-        value={form.description}
-        onChange={handleChange}
-        error={errors.description}
-        disabled={isLoading}
-        rows={5}
-      />
-      <div className="flex justify-between items-center">
-        <p className={`text-xs font-medium ${
-          form.description.length < 10 
-            ? 'text-red-500 dark:text-red-450' 
-            : 'text-gray-500 dark:text-gray-400'
-        }`}>
-          {form.description.length < 10 
-            ? `${10 - form.description.length} more character${10 - form.description.length !== 1 ? 's' : ''} needed` 
-            : `${form.description.length} character${form.description.length !== 1 ? 's' : ''}`}
-        </p>
+    <form onSubmit={handleSubmit} className="text-left bg-white dark:bg-gray-901 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden">
+      {/* Form header */}
+      <div className="px-6 py-4 border-b border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-blue-500" />
+          <p className="text-xs text-gray-500 dark:text-gray-450">
+            Fields marked with <span className="text-red-500 font-bold">*</span> are required
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-        <Select
-          label="Priority Level"
-          name="priority"
-          id="priority"
-          options={priorityOptions}
-          value={form.priority}
+      <div className="p-6 space-y-5">
+        {/* Title */}
+        <Input
+          label="Issue Title *"
+          name="title"
+          id="title"
+          placeholder="e.g. Login page crashes on submit"
+          value={form.title}
           onChange={handleChange}
-          error={errors.priority}
+          error={(touched.title || submitted) ? errors.title : undefined}
           disabled={isLoading}
         />
 
-        <Select
-          label="Severity Level"
-          name="severity"
-          id="severity"
-          options={severityOptions}
-          value={form.severity}
-          onChange={handleChange}
-          error={errors.severity}
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-        {isAdmin && (
-          <Select
-            label="Assignee User"
-            name="assignedTo"
-            id="assignedTo"
-            options={userOptions}
-            value={form.assignedTo}
+        {/* Description */}
+        <div>
+          <Textarea
+            label="Description *"
+            name="description"
+            id="description"
+            placeholder="Describe the issue, steps to reproduce, expected vs actual behavior..."
+            value={form.description}
             onChange={handleChange}
-            error={errors.assignedTo}
+            error={(touched.description || submitted) ? errors.description : undefined}
+            disabled={isLoading}
+            rows={5}
+          />
+          {touched.description && (
+            <div className="flex items-center justify-between mt-1.5">
+              <p className={`text-xs font-medium flex items-center gap-1 ${
+                !descValid
+                  ? 'text-red-500'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                {!descValid && <AlertTriangle className="h-3 w-3" />}
+                {!descValid
+                  ? `${10 - descLen} more character${10 - descLen !== 1 ? 's' : ''} needed`
+                  : `${descLen} characters`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Priority & Severity row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Select
+            label="Priority Level"
+            name="priority"
+            id="priority"
+            options={priorityOptions}
+            value={form.priority}
+            onChange={handleChange}
+            error={errors.priority}
             disabled={isLoading}
           />
-        )}
 
-        <Input
-          label="Target Due Date"
-          type="date"
-          name="dueDate"
-          id="dueDate"
-          value={form.dueDate}
-          onChange={handleChange}
-          error={errors.dueDate}
-          disabled={isLoading}
-        />
+          <Select
+            label="Severity Level"
+            name="severity"
+            id="severity"
+            options={severityOptions}
+            value={form.severity}
+            onChange={handleChange}
+            error={errors.severity}
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Assignee & Due Date row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {isAdmin && (
+            <Select
+              label="Assign To"
+              name="assignedTo"
+              id="assignedTo"
+              options={userOptions}
+              value={form.assignedTo}
+              onChange={handleChange}
+              error={errors.assignedTo}
+              disabled={isLoading}
+            />
+          )}
+
+          <Input
+            label="Due Date"
+            type="date"
+            name="dueDate"
+            id="dueDate"
+            value={form.dueDate}
+            onChange={handleChange}
+            error={errors.dueDate}
+            disabled={isLoading}
+          />
+        </div>
       </div>
 
-      <div className="flex items-center justify-end space-x-3 pt-3.5 border-t border-gray-150 dark:border-gray-800">
-        <Button variant="primary" type="submit" isLoading={isLoading}>
+      {/* Footer actions */}
+      <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/30 flex items-center justify-end gap-3">
+        <Button variant="primary" type="submit" isLoading={isLoading} className="px-6">
           {submitButtonText}
         </Button>
       </div>
