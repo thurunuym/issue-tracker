@@ -40,7 +40,6 @@ export const logIssueDiff = async (
     }
 
     if (oldVal !== newVal) {
-      // Determine specific action type
       let action: any = 'UPDATED';
       let message = `Updated ${field} from "${oldVal || 'None'}" to "${newVal || 'None'}"`;
 

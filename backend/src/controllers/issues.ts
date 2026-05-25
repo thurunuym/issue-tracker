@@ -88,7 +88,7 @@ export const getIssueStats = asyncHandler(async (req: AuthenticatedRequest, res:
     .sort({ createdAt: -1 })
     .limit(10);
 
-  // My active tasks: issues assigned to the current user that are Open or In Progress
+  // My active tasks
   const userId = req.user?.userId;
   let myActiveTasks: any[] = [];
   if (userId) {
@@ -134,7 +134,6 @@ export const createIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
     return res.status(400).json({ message: 'Title and description are required.' });
   }
 
-  // Handle optional assignments
   let assignedToId = undefined;
   if (assignedTo) {
     const assignedUser = await User.findById(assignedTo);
@@ -167,7 +166,6 @@ export const createIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
     message: 'Created a new issue'
   });
 
-  // Populate references
   const fullIssue = await Issue.findById(issue._id)
     .populate({ path: 'createdBy', select: 'name email avatar' })
     .populate({ path: 'assignedTo', select: 'name email avatar' });
@@ -183,7 +181,7 @@ export const updateIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
     return res.status(404).json({ message: 'Issue not found.' });
   }
 
-  // Verify fine-grained access
+  // Verify access
   const isCreator = String(issue.createdBy?._id || issue.createdBy) === String(req.user._id);
   const hasUpdateAny = req.permissions?.includes('issue:update:any');
   const hasUpdateOwn = req.permissions?.includes('issue:update:own');
@@ -213,7 +211,7 @@ export const updateIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
   if (assignedTo !== undefined) {
     if (assignedTo && String(assignedTo) !== String(issue.assignedTo)) {
       if (!req.permissions?.includes('issue:assign:any') && !hasUpdateAny) {
-        // user: check if can assign to self
+        // check if can assign to self
         const canAssignSelf = req.permissions?.includes('issue:assign:self') && String(assignedTo) === String(req.user._id);
         if (!canAssignSelf) {
           return res.status(403).json({ message: 'You do not have permission to assign this issue.' });
@@ -247,7 +245,6 @@ export const updateIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
     }
   }
 
-  // Diffs logging
   const oldRaw = issue.toObject ? issue.toObject() : { ...issue };
   const updatedIssue = await Issue.findByIdAndUpdate(id, { $set: updates }, { new: true });
   const newRaw = updatedIssue.toObject ? updatedIssue.toObject() : { ...updatedIssue };
@@ -282,7 +279,7 @@ export const deleteIssue = asyncHandler(async (req: AuthenticatedRequest, res: R
   await createActivity({
     issueId: id as string,
     performedBy: String(req.user._id),
-    action: 'CLOSED', // logging code for soft-deletion audit
+    action: 'CLOSED', 
     message: 'Soft deleted the issue'
   });
 

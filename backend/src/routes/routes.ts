@@ -12,7 +12,7 @@ import { authRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-// multer in-memory buffer parsing
+// multer in memory buffer parsing
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
